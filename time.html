@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>時計</title>
+  <style>
+    body {
+      background-color: #f8f8f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      font-family: sans-serif;
+      overflow: hidden;
+    }
+
+    #realtime {
+      font-size: 40vh;
+      color: #333;
+      font-weight: bold;
+      user-select: none;
+      line-height: 1;
+      padding: 0;
+      margin: 0;
+    }
+  </style>
+  <script>
+    function twoDigit(num) {
+      let ret;
+      if (num < 10)
+        ret = "0" + num;
+      else
+        ret = num;
+      return ret;
+    }
+
+    function showClock() {
+      let nowTime = new Date();
+      let nowHour = nowTime.getHours();
+      let nowMin = twoDigit(nowTime.getMinutes());
+      let nowSec = twoDigit(nowTime.getSeconds());
+      let ampm = "";
+      let displayHour = nowHour; // 表示用の時間
+
+      if (nowHour === 0) { // 午前0時 (日付が変わった瞬間)
+        ampm = "午前";
+        displayHour = 0; // そのまま0時
+      } else if (nowHour === 12) { // 正午 (お昼の12時)
+        ampm = "午後";
+        displayHour = 12; // そのまま12時
+      } else if (nowHour > 12) { // 午後1時以降
+        ampm = "午後";
+        displayHour = nowHour - 12;
+      } else { // 午前1時〜午前11時
+        ampm = "午前";
+      }
+
+      let msg = ampm + displayHour + ":" + nowMin + ":" + nowSec;
+      document.getElementById("realtime").innerHTML = msg;
+    }
+    setInterval('showClock()', 1000);
+  </script>
+</head>
+
+<body>
+  <p id="realtime"></p>
+</body>
+
+</html>
