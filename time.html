@@ -14,6 +14,14 @@
       margin: 0;
       font-family: sans-serif;
       overflow: hidden;
+      position: relative; /* 必要に応じて全体を囲むための基準 */
+    }
+
+    /* 時計全体を囲むコンテナ */
+    #clock-container {
+      position: relative; /* 子要素（日付、午前/午後）の絶対位置指定の基準 */
+      display: inline-block; /* コンテンツの幅に合わせる */
+      text-align: center; /* 内部のテキストを中央揃え */
     }
 
     #realtime {
@@ -24,6 +32,35 @@
       line-height: 1;
       padding: 0;
       margin: 0;
+      display: inline-block; /* text-align: center を効かせるためにブロック要素に */
+    }
+
+    #date-display,
+    #ampm-display {
+      position: absolute;
+      font-size: 6vh;
+      color: #666;
+      white-space: nowrap; /* テキストが改行されないように */
+      bottom: -10vh; /* 時計の数字の下からの距離。vhは画面の高さ基準 */
+      transform: translateY(0); /* 微調整用のベース */
+
+      /* スマホ縦画面での調整 */
+      @media (max-width: 768px) {
+        font-size: 4vh;
+        bottom: -7vh; /* スマホでより近くに */
+      }
+    }
+
+    #date-display {
+      left: 0;
+      /* 左端に配置し、自身の幅の半分だけ右にずらして左揃え */
+      transform: translateX(-50%);
+    }
+
+    #ampm-display {
+      right: 0;
+      /* 右端に配置し、自身の幅の半分だけ左にずらして右揃え */
+      transform: translateX(50%);
     }
   </style>
   <script>
@@ -42,12 +79,13 @@
       let nowMin = twoDigit(nowTime.getMinutes());
       let nowSec = twoDigit(nowTime.getSeconds());
       let ampm = "";
-      let displayHour = nowHour; // 表示用の時間
+      let displayHour = nowHour;
 
-      if (nowHour === 0) { // 午前0時 (日付が変わった瞬間)
+      // 午前/午後の判定と表示時間の調整 (12時間表示)
+      if (nowHour === 0) { // 午前0時
         ampm = "午前";
-        displayHour = 0; // そのまま0時
-      } else if (nowHour === 12) { // 正午 (お昼の12時)
+        displayHour = 12; // 0時は12時として表示
+      } else if (nowHour === 12) { // 正午
         ampm = "午後";
         displayHour = 12; // そのまま12時
       } else if (nowHour > 12) { // 午後1時以降
@@ -57,15 +95,51 @@
         ampm = "午前";
       }
 
-      let msg = ampm + displayHour + ":" + nowMin + ":" + nowSec;
-      document.getElementById("realtime").innerHTML = msg;
+      let timeMsg = displayHour + ":" + nowMin + ":" + nowSec;
+      document.getElementById("realtime").innerHTML = timeMsg;
+      document.getElementById("ampm-display").innerHTML = ampm;
+
+      // 日付の表示 (例: 7月2日(水))
+      const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+      let nowMonth = nowTime.getMonth() + 1; // 月は0から始まるため+1
+      let nowDay = nowTime.getDate();
+      let nowWeekday = weekdays[nowTime.getDay()];
+      let dateMsg = nowMonth + "月" + nowDay + "日(" + nowWeekday + ")";
+      document.getElementById("date-display").innerHTML = dateMsg;
+
+      // 日付と午前/午後の位置調整
+      // 時計の横幅を取得し、それに合わせて調整
+      const realtimeElement = document.getElementById("realtime");
+      const dateDisplayElement = document.getElementById("date-display");
+      const ampmDisplayElement = document.getElementById("ampm-display");
+
+      // 時計の数字の幅を取得
+      const realtimeWidth = realtimeElement.offsetWidth;
+      // 時計の数字の左端と右端のオフセットを計算
+      const leftOffset = -realtimeWidth / 2;
+      const rightOffset = realtimeWidth / 2;
+
+      // 日付と午前/午後のleft/rightプロパティを設定
+      // transform: translateX(-50%) / translateX(50%) は自身の幅の半分で調整するので、
+      // ここでは時計の数字の端に合わせるためにleft/rightを直接設定
+      dateDisplayElement.style.left = `calc(50% + ${leftOffset}px)`;
+      ampmDisplayElement.style.left = `calc(50% + ${rightOffset}px)`; /* rightの代わりにleftを使うことで時計の右端に揃える */
     }
-    setInterval('showClock()', 1000);
+
+    // 1秒ごとにshowClock関数を実行
+    setInterval(showClock, 1000);
+
+    // ページロード時に一度実行して初期表示
+    showClock();
   </script>
 </head>
 
 <body>
-  <p id="realtime"></p>
+  <div id="clock-container">
+    <p id="realtime"></p>
+    <p id="date-display"></p>
+    <p id="ampm-display"></p>
+  </div>
 </body>
 
 </html>
