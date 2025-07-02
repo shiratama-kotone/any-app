@@ -13,54 +13,70 @@
       min-height: 100vh;
       margin: 0;
       font-family: sans-serif;
-      overflow: hidden;
-      position: relative; /* 必要に応じて全体を囲むための基準 */
+      overflow: hidden; /* スクロールバーが出ないように */
+      padding: 10px; /* 画面端に近すぎないように少しパディング */
+      box-sizing: border-box; /* パディングを幅に含める */
     }
 
     /* 時計全体を囲むコンテナ */
     #clock-container {
-      position: relative; /* 子要素（日付、午前/午後）の絶対位置指定の基準 */
-      display: inline-block; /* コンテンツの幅に合わせる */
-      text-align: center; /* 内部のテキストを中央揃え */
+      display: flex;
+      flex-direction: column; /* 縦方向に要素を並べる */
+      align-items: center; /* 水平方向の中央揃え */
+      justify-content: center; /* 垂直方向の中央揃え (flex-direction: column の場合) */
+      width: 100%; /* 親要素の幅に合わせる */
+      max-width: 90vw; /* 画面幅の90%を超えないように（はみ出し防止） */
+      text-align: center;
     }
 
     #realtime {
-      font-size: 40vh;
+      /* 画面の幅と高さの小さい方に合わせてフォントサイズを調整し、はみ出しを防ぐ */
+      font-size: min(40vh, 20vw);
       color: #333;
       font-weight: bold;
       user-select: none;
       line-height: 1;
       padding: 0;
       margin: 0;
-      display: inline-block; /* text-align: center を効かせるためにブロック要素に */
+      white-space: nowrap; /* 数字が改行されないように */
+    }
+
+    /* 日付と午前/午後を格納するコンテナ */
+    #info-bottom {
+      display: flex;
+      justify-content: space-between; /* 左右に要素を広げる */
+      align-items: flex-end; /* 下揃え */
+      width: 100%; /* 時計の幅に合わせる */
+      margin-top: 1vh; /* 時計の数字との間に少し余白 */
+      padding: 0 2vw; /* 左右に少しパディングを入れて端に寄りすぎないように */
+      box-sizing: border-box;
     }
 
     #date-display,
     #ampm-display {
-      position: absolute;
-      font-size: 6vh;
+      /* フォントサイズを画面の幅と高さの小さい方に合わせて調整 */
+      font-size: min(6vh, 3vw);
       color: #666;
       white-space: nowrap; /* テキストが改行されないように */
-      bottom: -10vh; /* 時計の数字の下からの距離。vhは画面の高さ基準 */
-      transform: translateY(0); /* 微調整用のベース */
+      margin: 0;
+      padding: 0;
+      line-height: 1;
+    }
 
-      /* スマホ縦画面での調整 */
-      @media (max-width: 768px) {
-        font-size: 4vh;
-        bottom: -7vh; /* スマホでより近くに */
+    /* スマートフォンでの調整 */
+    @media (max-width: 768px) {
+      #realtime {
+        font-size: min(25vh, 40vw); /* スマホ縦画面でさらに小さく */
       }
-    }
-
-    #date-display {
-      left: 0;
-      /* 左端に配置し、自身の幅の半分だけ右にずらして左揃え */
-      transform: translateX(-50%);
-    }
-
-    #ampm-display {
-      right: 0;
-      /* 右端に配置し、自身の幅の半分だけ左にずらして右揃え */
-      transform: translateX(50%);
+      #info-bottom {
+        flex-direction: row; /* 横並びを維持 */
+        margin-top: 0.5vh;
+        padding: 0 1vw;
+      }
+      #date-display,
+      #ampm-display {
+        font-size: min(4vh, 6vw); /* スマホでさらに小さく */
+      }
     }
   </style>
   <script>
@@ -106,24 +122,6 @@
       let nowWeekday = weekdays[nowTime.getDay()];
       let dateMsg = nowMonth + "月" + nowDay + "日(" + nowWeekday + ")";
       document.getElementById("date-display").innerHTML = dateMsg;
-
-      // 日付と午前/午後の位置調整
-      // 時計の横幅を取得し、それに合わせて調整
-      const realtimeElement = document.getElementById("realtime");
-      const dateDisplayElement = document.getElementById("date-display");
-      const ampmDisplayElement = document.getElementById("ampm-display");
-
-      // 時計の数字の幅を取得
-      const realtimeWidth = realtimeElement.offsetWidth;
-      // 時計の数字の左端と右端のオフセットを計算
-      const leftOffset = -realtimeWidth / 2;
-      const rightOffset = realtimeWidth / 2;
-
-      // 日付と午前/午後のleft/rightプロパティを設定
-      // transform: translateX(-50%) / translateX(50%) は自身の幅の半分で調整するので、
-      // ここでは時計の数字の端に合わせるためにleft/rightを直接設定
-      dateDisplayElement.style.left = `calc(50% + ${leftOffset}px)`;
-      ampmDisplayElement.style.left = `calc(50% + ${rightOffset}px)`; /* rightの代わりにleftを使うことで時計の右端に揃える */
     }
 
     // 1秒ごとにshowClock関数を実行
@@ -137,8 +135,10 @@
 <body>
   <div id="clock-container">
     <p id="realtime"></p>
-    <p id="date-display"></p>
-    <p id="ampm-display"></p>
+    <div id="info-bottom">
+      <p id="date-display"></p>
+      <p id="ampm-display"></p>
+    </div>
   </div>
 </body>
 
