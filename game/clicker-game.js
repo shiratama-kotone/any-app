@@ -1,9 +1,9 @@
 // 保存キー
 const STORAGE_KEY = "clicker_game_save3";
 // サンプル画像
-const SAMPLE_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/512px-React-icon.svg.png";
+const SAMPLE_IMAGE = "https://github.com/shiratama-kotone/iroiro/blob/main/assets/sddefault.jpg";
 // マウスカーソル画像
-const CURSOR_IMAGE = "https://github.com/shiratama-kotone/iroiro/blob/main/assets/mouse_cursor_600.png?raw=true";
+const CURSOR_IMAGE = "https://github.com/shiratama-kotone/iroiro/blob/main/assets/mouse_cursor_600.png";
 
 // データ
 let count = 0;
