@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>クリッカーゲーム</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="left">
+    <div class="game-area" id="game-area">
+      <img id="click-img" class="main-img" src="https://github.com/shiratama-kotone/iroiro/blob/main/assets/sddefault.jpg" alt="Click!" />
+      <!-- カーソルはJSから追加 -->
+    </div>
+  </div>
+  <div class="right">
+    <div class="score" id="score">0 Clicks</div>
+    <button class="btn" id="upgrade-btn">1click = +1（強化する: 10）</button>
+    <button class="btn btn-supporter" id="supporter-btn">
+      Click supporter 購入（50）<br>
+      <span style="font-size:16px;color:#fff9;font-weight:400;">カーソル: 0</span>
+    </button>
+    <button class="reset-btn" id="reset-btn">データリセット</button>
+    <div class="desc">画像やスタイルは自由に変更できます</div>
+  </div>
+  <script src="clicker-game.js"></script>
+</body>
+</html>
