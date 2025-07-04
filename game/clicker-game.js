@@ -1,7 +1,7 @@
 // 保存キー
 const STORAGE_KEY = "clicker_game_save3";
 // サンプル画像
-const SAMPLE_IMAGE = "https://github.com/shiratama-kotone/iroiro/blob/main/assets/sddefault.jpg";
+const SAMPLE_IMAGE = "https://raw.githubusercontent.com/shiratama-kotone/iroiro/refs/heads/main/assets/sddefault.jpg";
 // マウスカーソル画像
 const CURSOR_IMAGE = "https://github.com/shiratama-kotone/iroiro/blob/main/assets/mouse_cursor_600.png";
 
