@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>カレンダー</title>
+  <meta name="viewport" content="width=480">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="calendar-container">
+    <div class="calendar-header">
+      <button id="prevBtn">&lt;</button>
+      <span id="calendarTitle"></span>
+      <button id="nextBtn">&gt;</button>
+    </div>
+    <table class="calendar">
+      <thead>
+        <tr>
+          <th class="sunday">日</th>
+          <th>月</th>
+          <th>火</th>
+          <th>水</th>
+          <th>木</th>
+          <th>金</th>
+          <th class="saturday">土</th>
+        </tr>
+      </thead>
+      <tbody id="calendarBody">
+        <!-- JSで生成 -->
+      </tbody>
+    </table>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
