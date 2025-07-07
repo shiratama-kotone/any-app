@@ -1,0 +1,196 @@
+body {
+  font-family: 'Segoe UI', 'Yu Gothic', 'Meiryo', sans-serif;
+  background: #fafbfc;
+  margin: 0;
+}
+.calendar-container {
+  width: 400px;
+  max-width: 98vw;
+  margin: 40px auto;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px #0002;
+  padding: 20px 10px 28px 10px;
+}
+.calendar-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.calendar-header span {
+  flex: 1;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.25em;
+  letter-spacing: 2px;
+}
+.calendar-header button {
+  font-size: 1.3em;
+  background: #f0f0f0;
+  border: none;
+  border-radius: 6px;
+  width: 2.3em;
+  height: 2.3em;
+  cursor: pointer;
+  margin: 0 10px;
+  transition: background 0.2s;
+}
+.calendar-header button:hover {
+  background: #e0e0e0;
+}
+table.calendar {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: #fff;
+  font-size: 15px;
+}
+table.calendar th, table.calendar td {
+  vertical-align: top;
+  padding: 6px 4px 6px 4px;
+  border: 1px solid #eee;
+  height: 56px;
+  min-width: 48px;
+  max-width: 60px;
+  box-sizing: border-box;
+  position: relative;
+  transition: background 0.2s;
+  background-clip: padding-box;
+  overflow: visible;
+}
+table.calendar th {
+  background: #f6f6f6;
+  font-weight: bold;
+  font-size: 14px;
+  color: #666;
+  letter-spacing: 0.5em;
+  padding-right: 12px;
+  text-align: center;
+  height: 36px;
+}
+.sunday, .holiday { color: #e50000 !important; }
+.saturday { color: #0066cc !important; }
+.anniversary { color: #c99700 !important; }
+
+.cell-today {
+  background: #e0fffe !important;
+  /* 最優先で上書き */
+  z-index: 2;
+}
+.cell-holiday, .cell-sunday {
+  background: #ffe0e0 !important;
+}
+.cell-saturday {
+  background: #b5ceff !important;
+}
+.cell-anniversary {
+  background: #fffbe6 !important;
+}
+.day-number {
+  font-size: 11px;
+  font-weight: bold;
+  position: absolute;
+  top: 5px;
+  right: 7px;
+  width: 1.3em;
+  height: 1.3em;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  z-index: 1;
+  background: transparent;
+  pointer-events: none;
+  user-select: none;
+  color: inherit;
+}
+
+/* ラベル複数行対応 */
+.label-container {
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  bottom: 4px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: auto;
+  max-width: 93%;
+}
+.holiday-label, .anniversary-label {
+  font-size: 12px;
+  display: block;
+  text-align: left;
+  white-space: normal;
+  overflow: hidden;
+  line-height: 1.2;
+  font-weight: normal;
+  pointer-events: none;
+  user-select: none;
+  border-radius: 4px;
+  padding: 0 2px;
+}
+.holiday-label { color: #e50000; background: none; }
+.anniversary-label { color: #c99700; background: none; }
+
+/* ポップアップラベル（中央表示、複数行対応） */
+.popup-label-container {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 90%;
+  min-height: 2.8em;
+  padding: 0.45em 0.5em;
+  background: #fff;
+  border-radius: 1.1em;
+  box-shadow: 0 4px 20px #0003, 0 1.5px 4px #0001;
+  border: 2px solid #f0f0f0;
+  transform: translate(-50%, -50%);
+  z-index: 40;
+  text-align: center;
+  white-space: normal;
+  line-height: 1.35;
+  font-weight: bold;
+  pointer-events: none;
+  user-select: none;
+}
+
+td.has-label:hover .popup-label-container,
+td.has-label.active .popup-label-container {
+  display: flex;
+}
+
+.popup-label-holiday { color: #e50000; }
+.popup-label-anniversary { color: #c99700; }
+
+@media (max-width: 600px) {
+  .calendar-container {
+    width: 99vw;
+    min-width: 0;
+    padding: 2vw 1vw;
+  }
+  table.calendar th, table.calendar td {
+    font-size: 12px;
+    min-width: 22px;
+    max-width: 34px;
+    height: 38px;
+    padding: 4px 1px 5px 2px;
+  }
+  .day-number { font-size: 8.5px; top: 3px; right: 3px; }
+  .holiday-label, .anniversary-label { font-size: 9.5px; }
+  .label-container { max-width: 95%; }
+  .popup-label-container { font-size: 0.96em; min-height: 2.1em; }
+  .calendar-header span { font-size: 1em; }
+}
+@media (max-width: 400px) {
+  .calendar-header span { font-size: 0.92em; }
+  table.calendar th, table.calendar td { font-size: 9.5px; }
+  .holiday-label, .anniversary-label { font-size: 8px; }
+}
