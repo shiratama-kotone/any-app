@@ -1,17 +1,26 @@
-body {
-  font-family: 'Segoe UI', 'Yu Gothic', 'Meiryo', sans-serif;
-  background: #fafbfc;
+html, body {
+  height: 100%;
   margin: 0;
-  height: 100vh;
-  overflow-x: hidden;
-  padding-top: 36px;
-  padding-bottom: 36px;
+  padding: 0;
+  width: 100vw;
+  overflow: hidden;
+  background: #fafbfc;
+  font-family: 'Segoe UI', 'Yu Gothic', 'Meiryo', sans-serif;
 }
+
+/* 余白を画面端から固定：上下36px、左右はautoで中央 */
 .calendar-container {
-  height: calc(100vh - 72px); /* 上下余白分を引く */
+  position: absolute;
+  top: 36px;
+  bottom: 36px;
+  left: 0; right: 0;
+  margin: auto;
+  /* 余白を除いた最大高でアスペクト比フィット */
+  height: calc(100vh - 72px);
+  max-height: calc(100vh - 72px);
   aspect-ratio: 7 / 6.5;
   max-width: 98vw;
-  margin: auto;
+  width: auto;
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 2px 12px #0002;
@@ -19,7 +28,10 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: stretch;
+  overflow: hidden;
 }
+
+/* カレンダーのヘッダー */
 .calendar-header {
   display: flex;
   justify-content: flex-end;
@@ -48,6 +60,8 @@ body {
 .calendar-header button:hover {
   background: #e0e0e0;
 }
+
+/* カレンダー本体テーブル */
 table.calendar {
   width: 100%;
   height: 100%;
@@ -81,6 +95,8 @@ table.calendar th {
   text-align: center;
   height: 2.2em;
 }
+
+/* 曜日・祝日・記念日色 */
 .sunday, .holiday { color: #e50000 !important; }
 .saturday { color: #0066cc !important; }
 .anniversary { color: #c99700 !important; }
@@ -191,12 +207,11 @@ td.has-label.active .popup-label-container {
 
 /* スマホ対応 */
 @media (max-width: 600px), (max-height: 600px) {
-  body {
-    padding-top: 12px;
-    padding-bottom: 12px;
-  }
   .calendar-container {
+    top: 12px;
+    bottom: 12px;
     height: calc(100vh - 24px);
+    max-height: calc(100vh - 24px);
     aspect-ratio: 7 / 7.1;
     min-height: 60vw;
     max-width: 99vw;
@@ -219,8 +234,4 @@ td.has-label.active .popup-label-container {
   .calendar-header span { font-size: min(5vw,0.92em); }
   table.calendar th, table.calendar td { font-size: min(3vw,9.5px); }
   .holiday-label, .anniversary-label { font-size: min(3vw,8px); }
-}
-  .calendar-header span { font-size: 0.92em; }
-  table.calendar th, table.calendar td { font-size: 9.5px; }
-  .holiday-label, .anniversary-label { font-size: 8px; }
 }
