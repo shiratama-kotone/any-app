@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8" />
+    <title>タイマー</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="clock-container">
+        <p id="realtime">00:00:00</p>
+    </div>
+
+    <div id="timer-controls">
+        <div class="timer-setting">
+            <label for="timer-slider" id="slider-value-display">0 分</label>
+            <input type="range" id="timer-slider" min="0" max="120" value="0">
+            <input type="number" id="timer-input" value="0" min="0">
+        </div>
+        <div class="button-group">
+            <button id="start-pause-button" class="timer-button start">スタート</button>
+            <button id="reset-button" class="timer-button reset">リセット</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
