@@ -1,0 +1,154 @@
+body {
+    background-color: #f8f8f8;
+    display: flex;
+    flex-direction: column; /* Arrange items vertically */
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+    font-family: sans-serif;
+    overflow: hidden;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+/* Timer container */
+#clock-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 90vw;
+    text-align: center;
+    margin-bottom: 20px; /* Space between timer and controls */
+}
+
+#realtime {
+    font-size: min(40vh, 20vw);
+    color: #333;
+    font-weight: bold;
+    user-select: none;
+    line-height: 1;
+    padding: 0;
+    margin: 0;
+    white-space: nowrap;
+}
+
+/* Timer controls container */
+#timer-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 500px; /* Limit width for controls */
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
+/* Slider and input */
+.timer-setting {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+#timer-slider {
+    width: 100%;
+    margin-top: 10px;
+    -webkit-appearance: none; /* Remove default styling */
+    appearance: none;
+    height: 10px;
+    background: #ddd;
+    outline: none;
+    border-radius: 5px;
+}
+
+#timer-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #007bff;
+    border-radius: 50%;
+    cursor: grab;
+}
+
+#timer-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #007bff;
+    border-radius: 50%;
+    cursor: grab;
+}
+
+#timer-input {
+    width: 100px;
+    padding: 8px;
+    margin-top: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 1em;
+}
+
+#slider-value-display {
+    font-size: 1.2em;
+    color: #555;
+    margin-top: 5px;
+}
+
+/* Buttons */
+.button-group {
+    display: flex;
+    justify-content: center;
+    gap: 15px; /* Space between buttons */
+    width: 100%;
+    margin-top: 15px;
+}
+
+.timer-button {
+    padding: 10px 25px;
+    font-size: 1.2em;
+    cursor: pointer;
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+    min-width: 120px; /* Ensure buttons have a minimum width */
+}
+
+.timer-button.start {
+    background-color: #28a745; /* Green for start */
+    color: white;
+}
+
+.timer-button.pause {
+    background-color: #ffc107; /* Orange for pause */
+    color: #333;
+}
+
+.timer-button.reset {
+    background-color: #dc3545; /* Red for reset */
+    color: white;
+}
+
+.timer-button:hover {
+    opacity: 0.9;
+}
+
+/* Media queries for responsiveness */
+@media (max-width: 768px) {
+    #realtime {
+        font-size: min(25vh, 40vw);
+    }
+    #timer-controls {
+        padding: 0 10px;
+    }
+    .timer-button {
+        padding: 8px 15px;
+        font-size: 1em;
+        min-width: 100px;
+    }
+}
