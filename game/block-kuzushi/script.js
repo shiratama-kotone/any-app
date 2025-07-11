@@ -1,4 +1,4 @@
-// --- ステージ定義 ---
+// --- ステージ定義（変更なし） ---
 const stages = [
   [
     "1111111",
@@ -24,7 +24,7 @@ const stages = [
   ]
 ];
 
-// --- 色リスト（上から順に） ---
+// --- 色リスト（上から順に）（変更なし） ---
 const colorSets = [
   "#f44336", // 赤
   "#ff9800", // オレンジ
@@ -35,7 +35,7 @@ const colorSets = [
   "#9c27b0"  // 紫
 ];
 
-// --- ステージ用に行数に応じて色セットを決定 ---
+// --- ステージ用に行数に応じて色セットを決定（変更なし） ---
 function getColorList(rowCount) {
   if (rowCount <= colorSets.length) return colorSets.slice(0, rowCount);
   let colors = [];
@@ -68,18 +68,25 @@ function lerp(a,b,t) {
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-// --- Adjust canvas size for mobile ---
-canvas.width = window.innerWidth * 0.9; // 90% of screen width
-canvas.height = window.innerHeight * 0.7; // 70% of screen height
+// --- 縦長表示を強制するためのキャンバスサイズ調整 ---
+// 画面の幅と高さを比較し、短い方を基準にする
+// スマートフォンでは縦持ちが一般的で、幅が狭いことが多い
+const screenShortSide = Math.min(window.innerWidth, window.innerHeight);
 
-const WIDTH = canvas.width;
-const HEIGHT = canvas.height;
-const PADDLE_WIDTH = WIDTH * 0.15; // Proportional paddle width
-const PADDLE_HEIGHT = HEIGHT * 0.02; // Proportional paddle height
-const BALL_RADIUS = WIDTH * 0.015; // Proportional ball radius
-const BLOCK_MARGIN = WIDTH * 0.01; // Proportional block margin
-const BLOCK_HEIGHT = HEIGHT * 0.04; // Proportional block height
-const PADDLE_CENTER_WIDTH = PADDLE_WIDTH * 0.05; // Central red part width
+// キャンバスの幅を画面の短い方の辺の90%に設定
+canvas.width = screenShortSide * 0.9;
+// キャンバスの高さは、幅に対して約1.8倍（縦長の比率）に設定
+canvas.height = canvas.width * 1.8; // 例: 幅が300pxなら高さは540px
+
+let WIDTH = canvas.width; // let に変更してリサイズ時に更新可能に
+let HEIGHT = canvas.height; // let に変更してリサイズ時に更新可能に
+
+const PADDLE_WIDTH = WIDTH * 0.4; // パドルの幅を幅に対して大きめに調整
+const PADDLE_HEIGHT = HEIGHT * 0.02;
+const BALL_RADIUS = WIDTH * 0.03;
+const BLOCK_MARGIN = WIDTH * 0.015;
+const BLOCK_HEIGHT = HEIGHT * 0.05;
+const PADDLE_CENTER_WIDTH = PADDLE_WIDTH * 0.05;
 
 // --- ゲーム状態 ---
 let currentStage = 0;
@@ -91,7 +98,11 @@ let gameState = "start"; // start, playing, clear, gameover
 let info = document.getElementById("info");
 let isPierceMode = false; // 貫通モード
 
-// --- ステージセットアップ ---
+// ★追加：パドルを滑らかに動かすための目標位置
+let targetPaddleX = 0;
+const PADDLE_SMOOTHING = 0.2; // 0より大きく1より小さい値。大きいほど素早く、小さいほど滑らかに動く。
+
+// --- ステージセットアップ（変更なし） ---
 function setupStage() {
   // ステージ形状
   let stage = stages[currentStage];
@@ -105,7 +116,7 @@ function setupStage() {
       if(stage[y][x] === "1") {
         blocks.push({
           x: BLOCK_MARGIN + x*(blockWidth+BLOCK_MARGIN),
-          y: HEIGHT * 0.1 + y*(BLOCK_HEIGHT+BLOCK_MARGIN), // Adjust starting Y position
+          y: HEIGHT * 0.1 + y*(BLOCK_HEIGHT+BLOCK_MARGIN),
           w: blockWidth,
           h: BLOCK_HEIGHT,
           color: colors[y]
@@ -114,7 +125,7 @@ function setupStage() {
     }
   }
   // パドル・ボール初期化
-  resetBallAndPaddle(); // Use a separate function for resetting ball/paddle
+  resetBallAndPaddle();
   isPierceMode = false;
   gameState = "playing";
   updateInfo();
@@ -122,15 +133,18 @@ function setupStage() {
 
 // --- Function to reset ball and paddle position ---
 function resetBallAndPaddle() {
+  // パドルは画面中央にリセット
   paddle.x = (WIDTH - PADDLE_WIDTH)/2;
+  // 目標位置も同じに設定
+  targetPaddleX = paddle.x;
+
   ball.x = WIDTH/2;
-  ball.y = HEIGHT - (PADDLE_HEIGHT + 30); // Position above the paddle
-  ball.vx = 3 * (Math.random()<0.5?1:-1) * (WIDTH / 400); // Scale initial velocity
-  ball.vy = -4 * (HEIGHT / 600); // Scale initial velocity
+  ball.y = HEIGHT - (PADDLE_HEIGHT + HEIGHT * 0.05);
+  ball.vx = 3 * (Math.random()<0.5?1:-1) * (WIDTH / 400);
+  ball.vy = -4 * (HEIGHT / 600);
   isPierceMode = false;
   updateInfo();
 }
-
 
 function updateInfo() {
   info.innerHTML = `ステージ: ${currentStage+1}/${stages.length}　ライフ: ${lives}${isPierceMode ? "　<貫通モード！>" : ""}`;
@@ -140,16 +154,23 @@ function updateInfo() {
 function update() {
   if(gameState !== "playing") return;
 
-  // ボール移動
+  // ★追加：パドルの動きを滑らかにするロジック
+  // 現在のパドル位置を目標位置に近づける
+  paddle.x += (targetPaddleX - paddle.x) * PADDLE_SMOOTHING;
+  // パドルがキャンバスからはみ出さないように制限
+  paddle.x = Math.max(0, Math.min(WIDTH - PADDLE_WIDTH, paddle.x));
+
+
+  // ボール移動（変更なし）
   ball.x += ball.vx;
   ball.y += ball.vy;
-  // 壁反射
+  // 壁反射（変更なし）
   if(ball.x < BALL_RADIUS){ ball.x = BALL_RADIUS; ball.vx *= -1; }
   if(ball.x > WIDTH-BALL_RADIUS){ ball.x = WIDTH-BALL_RADIUS; ball.vx *= -1; }
   if(ball.y < BALL_RADIUS){ ball.y = BALL_RADIUS; ball.vy *= -1; }
 
-  // パドル反射
-  let paddleTop = HEIGHT - (PADDLE_HEIGHT + 20); // Adjust paddle Y position
+  // パドル反射（変更なし）
+  let paddleTop = HEIGHT - (PADDLE_HEIGHT + HEIGHT * 0.03);
   if(
     ball.y + BALL_RADIUS > paddleTop &&
     ball.y - BALL_RADIUS < paddleTop + PADDLE_HEIGHT &&
@@ -157,19 +178,14 @@ function update() {
     ball.x < paddle.x + PADDLE_WIDTH &&
     ball.vy > 0
   ) {
-    // パドルのどこに当たったか（中心からの距離 -1〜1）
     let relX = (ball.x - (paddle.x + PADDLE_WIDTH / 2));
     let norm = relX / (PADDLE_WIDTH / 2);
-    // パドル反発角度（外側に行くほど急、中心は真上）
-    let maxAngle = Math.PI * 5 / 12; // 75度
-    // 修正：右に当てたら右上、左に当てたら左上に
+    let maxAngle = Math.PI * 5 / 12;
     let angle = Math.PI/2 - norm * maxAngle;
     let speed = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy);
 
-    // 貫通モードの解除
     if(isPierceMode) isPierceMode = false;
 
-    // 真ん中5pxは赤色、当たったら貫通モード
     const centerLeft = paddle.x + PADDLE_WIDTH/2 - PADDLE_CENTER_WIDTH/2;
     const centerRight = paddle.x + PADDLE_WIDTH/2 + PADDLE_CENTER_WIDTH/2;
     if(ball.x >= centerLeft && ball.x <= centerRight) {
@@ -177,14 +193,12 @@ function update() {
       updateInfo();
     }
 
-    // 反発ベクトル
     ball.vx = speed * Math.cos(angle);
     ball.vy = -Math.abs(speed * Math.sin(angle));
-    // ボールをパドルの上に配置
     ball.y = paddleTop - BALL_RADIUS - 1;
   }
 
-  // ブロック衝突
+  // ブロック衝突（変更なし）
   for(let i=0; i<blocks.length; i++) {
     let b = blocks[i];
     if(
@@ -194,7 +208,6 @@ function update() {
       ball.y - BALL_RADIUS < b.y+b.h
     ) {
       if(!isPierceMode) {
-        // 衝突面によって反発方向を決定（より正確に）
         let overlapLeft = ball.x + BALL_RADIUS - b.x;
         let overlapRight = b.x + b.w - (ball.x - BALL_RADIUS);
         let overlapTop = ball.y + BALL_RADIUS - b.y;
@@ -211,23 +224,24 @@ function update() {
     }
   }
 
-  // ステージクリア
+  // ステージクリア（変更なし）
   if(blocks.length === 0) {
     gameState = "clear";
     setTimeout(nextStage, 1000);
   }
 
-  // 落下
+  // 落下（変更なし）
   if(ball.y > HEIGHT + BALL_RADIUS) {
     lives--;
     if(lives > 0) {
-      resetBallAndPaddle(); // Only reset ball and paddle, not the whole stage
+      resetBallAndPaddle();
     } else {
       gameState = "gameover";
     }
   }
 }
 
+// --- draw 関数（変更なし） ---
 function draw() {
   ctx.clearRect(0,0,WIDTH,HEIGHT);
 
@@ -239,7 +253,7 @@ function draw() {
     ctx.strokeRect(b.x, b.y, b.w, b.h);
   }
   // パドル
-  let paddleY = HEIGHT - (PADDLE_HEIGHT + 20); // Use a consistent Y for paddle
+  let paddleY = HEIGHT - (PADDLE_HEIGHT + HEIGHT * 0.03);
   // 左側
   ctx.fillStyle = "#fff";
   ctx.fillRect(paddle.x, paddleY, PADDLE_WIDTH/2-PADDLE_CENTER_WIDTH/2, PADDLE_HEIGHT);
@@ -257,18 +271,18 @@ function draw() {
 
   // メッセージ
   if(gameState === "gameover") {
-    ctx.font = `${WIDTH * 0.08}px sans-serif`; // Scale font size
+    ctx.font = `${WIDTH * 0.08}px sans-serif`;
     ctx.fillStyle = "red";
-    ctx.textAlign = "center"; // Center text
+    ctx.textAlign = "center";
     ctx.fillText("Game Over", WIDTH/2, HEIGHT/2);
-    ctx.textAlign = "left"; // Reset for other text
+    ctx.textAlign = "left";
   }
   if(gameState === "clear" && currentStage === stages.length-1) {
-    ctx.font = `${WIDTH * 0.08}px sans-serif`; // Scale font size
+    ctx.font = `${WIDTH * 0.08}px sans-serif`;
     ctx.fillStyle = "yellow";
-    ctx.textAlign = "center"; // Center text
+    ctx.textAlign = "center";
     ctx.fillText("All Clear!!", WIDTH/2, HEIGHT/2);
-    ctx.textAlign = "left"; // Reset for other text
+    ctx.textAlign = "left";
   }
 }
 
@@ -279,20 +293,17 @@ function gameLoop() {
 }
 
 // --- 操作 ---
-// Touch events for mobile
+// ★変更：タッチイベントでパドルの目標位置を更新
 document.addEventListener("touchstart", e => {
   let rect = canvas.getBoundingClientRect();
-  let x = e.touches[0].clientX - rect.left;
-  paddle.x = Math.max(0, Math.min(WIDTH - PADDLE_WIDTH, x - PADDLE_WIDTH/2));
-}, { passive: false }); // Use passive: false to allow preventDefault if needed
+  targetPaddleX = e.touches[0].clientX - rect.left - PADDLE_WIDTH/2;
+}, { passive: false });
 
 document.addEventListener("touchmove", e => {
   let rect = canvas.getBoundingClientRect();
-  let x = e.touches[0].clientX - rect.left;
-  paddle.x = Math.max(0, Math.min(WIDTH - PADDLE_WIDTH, x - PADDLE_WIDTH/2));
+  targetPaddleX = e.touches[0].clientX - rect.left - PADDLE_WIDTH/2;
 }, { passive: false });
 
-// For restarting the game after gameover or all clear on touch/click
 document.addEventListener("click", e => {
   if(gameState==="gameover" || (gameState==="clear" && currentStage === stages.length-1)) {
     currentStage = 0;
@@ -301,57 +312,40 @@ document.addEventListener("click", e => {
   }
 });
 
-// Remove keyboard controls as we're focusing on mobile touch
-// document.addEventListener("keydown", e=>{
-//   if(e.key === "ArrowLeft") paddle.x = Math.max(0, paddle.x-24);
-//   if(e.key === "ArrowRight") paddle.x = Math.min(WIDTH-PADDLE_WIDTH, paddle.x+24);
-//   if(gameState==="gameover" || (gameState==="clear" && currentStage === stages.length-1)) {
-//     currentStage = 0;
-//     lives = 3;
-//     setupStage();
-//   }
-// });
 
-
-// --- ステージ切り替え ---
+// --- ステージ切り替え（変更なし） ---
 function nextStage() {
   currentStage++;
   if(currentStage >= stages.length) {
-    // 全クリア
     gameState = "clear";
   } else {
-    lives = 3; // Reset lives for new stage
+    lives = 3;
     setupStage();
   }
   updateInfo();
 }
 
-// --- ゲーム開始 ---
+// --- ゲーム開始（変更なし） ---
 setupStage();
 gameLoop();
 
 // --- Handle window resize for responsiveness ---
 window.addEventListener('resize', () => {
-    canvas.width = window.innerWidth * 0.9;
-    canvas.height = window.innerHeight * 0.7;
-    // Recalculate proportional constants based on new dimensions
-    const oldWidth = WIDTH; // Store old width to adjust positions if needed
-    const oldHeight = HEIGHT;
-    
+    const screenShortSide = Math.min(window.innerWidth, window.innerHeight);
+    canvas.width = screenShortSide * 0.9;
+    canvas.height = canvas.width * 1.8;
+
+    // WIDTHとHEIGHTを更新
     WIDTH = canvas.width;
     HEIGHT = canvas.height;
-
-    // Adjust constants based on new dimensions
-    PADDLE_WIDTH = WIDTH * 0.15;
+    
+    // 他の定数も新しいWIDTHとHEIGHTに基づいて再計算
+    PADDLE_WIDTH = WIDTH * 0.4;
     PADDLE_HEIGHT = HEIGHT * 0.02;
-    BALL_RADIUS = WIDTH * 0.015;
-    BLOCK_MARGIN = WIDTH * 0.01;
-    BLOCK_HEIGHT = HEIGHT * 0.04;
+    BALL_RADIUS = WIDTH * 0.03;
+    BLOCK_MARGIN = WIDTH * 0.015;
+    BLOCK_HEIGHT = HEIGHT * 0.05;
     PADDLE_CENTER_WIDTH = PADDLE_WIDTH * 0.05;
 
-    // Reposition elements based on new canvas size
-    // You might need more sophisticated repositioning for blocks if you want them to scale perfectly
-    // For now, let's just reset the ball and paddle for simplicity on resize
-    resetBallAndPaddle();
-    setupStage(); // Re-setup the stage to recalculate block positions
+    setupStage();
 });
