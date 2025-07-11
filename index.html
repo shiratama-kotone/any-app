@@ -1,59 +1,126 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <title>いろいろあぷり</title>
-<h1 class="example4">
-  いろいろあるよ
-</h1>
-<style>
-  body {
-    background-color: #f8f8f8;
-    font-size: 50px;
-    min-height: 100vh;
-    margin: 0;
-    font-family: sans-serif;
-    overflow: hidden;
-  }
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>いろいろあぷり - サイトマップ</title>
+    <style>
+        body {
+            background-color: #f8f8f8;
+            font-family: sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            color: #333; /* デフォルトの文字色を設定 */
+            font-size: 20px; /* サイトマップの文字サイズを調整 */
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 50px auto; /* 上下のマージンを追加 */
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #0056b3;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 40px; /* サイトマップのH1のサイズを調整 */
+        }
+        h2 {
+            color: #0056b3;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 5px;
+            margin-top: 30px;
+            font-size: 28px; /* サイトマップのH2のサイズを調整 */
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        ul li {
+            margin-bottom: 10px;
+        }
+        ul li a {
+            text-decoration: none;
+            color: #007bff;
+            font-weight: bold;
+            font-size: 22px; /* リンクの文字サイズを調整 */
+        }
+        ul li a:hover {
+            text-decoration: underline;
+            color: #0056b3;
+        }
+        ul ul { /* サブカテゴリのリスト */
+            margin-left: 20px;
+            margin-top: 5px;
+            border-left: 2px solid #eee;
+            padding-left: 10px;
+        }
+        ul ul li a {
+            font-weight: normal;
+            color: #555; /* サブリンクの色を少し暗く */
+            font-size: 20px; /* サブリンクの文字サイズを調整 */
+        }
+        ul ul li a:hover {
+            color: #0056b3;
+        }
 
-  .example4 {
-    background: linear-gradient(
-      to right,
-      #e60000,
-      #f39800,
-      #fff100,
-      #009944,
-      #0068b7,
-      #1d2088,
-      #920783,
-      #e60000
-    )
-    0 / 200%; /* ここで背景のサイズを200%に設定しているのがポイント */
-    animation: 5s example4 linear infinite;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
+        /* 元のHTMLから持ってきたスタイル */
+        .example4 {
+            background: linear-gradient(
+                to right,
+                #e60000,
+                #f39800,
+                #fff100,
+                #009944,
+                #0068b7,
+                #1d2088,
+                #920783,
+                #e60000
+            ) 0 / 200%;
+            animation: 5s example4 linear infinite;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 50px; /* 元のHTMLのフォントサイズを適用 */
+            text-align: center; /* 中央寄せ */
+            margin-top: 20px; /* タイトルとの間隔を調整 */
+        }
 
-  /* --- ここから追加 --- */
-  @keyframes example4 {
-    from {
-      background-position: 0% 0%; /* グラデーションの開始位置 */
-    }
-    to {
-      background-position: 200% 0%; /* グラデーションの終了位置。背景が200%なので、これで一巡してシームレスにループします */
-    }
-  }
-  /* --- ここまで追加 --- */
-
-</style>
+        @keyframes example4 {
+            from { background-position: 0% 0%; }
+            to { background-position: 200% 0%; }
+        }
+    </style>
 </head>
 <body>
-  <a href="/any-app/app/time.html">正確な時計</a>
-<br>
-  <a href="/any-app/game/">ゲーム一覧</a>
-  <br>
-  <a href="/any-app/calendar">カレンダー</a>
-</body>
+    <div class="container">
+        <h1 class="example4">いろいろあるよ</h1>
 
+        <p>こんなのがあるよー</p>
+
+        <h2>役立ちアプリ</h2>
+        <ul>
+            <li><a href="/any-app/app/time.html">正確な時計</a></li>
+            <li>
+                <a href="/any-app/game/">ゲーム</a>
+                <ul>
+                    <li><a href="/any-app/game/cookie-clicker">Cookie Clicker (クッキークリッカー)</a></li>
+                    <li><a href="/any-app/game/block-kuzushi.html">ブロック崩し</a></li>
+                    <li><a href="/any-app/game/clicker-game.html">クリッカーゲーム</a></li>
+                </ul>
+            </li>
+            <li><a href="/any-app/calendar">カレンダー</a></li>
+        </ul>
+
+        <h2>その他のページ</h2>
+        <ul>
+            <li><a href="index.html">トップページ(このページ)</a></li>
+            <li><a href="about.html"></a></li>
+            <li><a href="contact.html"></a></li>
+        </ul>
+    </div>
+</body>
 </html>
