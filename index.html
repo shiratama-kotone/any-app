@@ -10,31 +10,32 @@
             font-family: sans-serif;
             min-height: 100vh;
             margin: 0;
-            overflow: hidden;
-            color: #333; /* デフォルトの文字色を設定 */
-            font-size: 20px; /* サイトマップの文字サイズを調整 */
+            overflow-x: hidden; /* 横方向のスクロールバーを非表示にする */
+            color: #333;
+            font-size: 20px;
             line-height: 1.6;
         }
         .container {
             max-width: 900px;
-            margin: 50px auto; /* 上下のマージンを追加 */
+            margin: 50px auto; /* 上部の余白は50pxを維持 */
             background: #fff;
             padding: 30px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding-bottom: 80px; /* ここを調整して下部の余白を増やします */
         }
         h1 {
             color: #0056b3;
             text-align: center;
             margin-bottom: 30px;
-            font-size: 40px; /* サイトマップのH1のサイズを調整 */
+            font-size: 40px;
         }
         h2 {
             color: #0056b3;
             border-bottom: 2px solid #eee;
             padding-bottom: 5px;
             margin-top: 30px;
-            font-size: 28px; /* サイトマップのH2のサイズを調整 */
+            font-size: 28px;
         }
         ul {
             list-style: none;
@@ -47,13 +48,13 @@
             text-decoration: none;
             color: #007bff;
             font-weight: bold;
-            font-size: 22px; /* リンクの文字サイズを調整 */
+            font-size: 22px;
         }
         ul li a:hover {
             text-decoration: underline;
             color: #0056b3;
         }
-        ul ul { /* サブカテゴリのリスト */
+        ul ul {
             margin-left: 20px;
             margin-top: 5px;
             border-left: 2px solid #eee;
@@ -61,14 +62,13 @@
         }
         ul ul li a {
             font-weight: normal;
-            color: #555; /* サブリンクの色を少し暗く */
-            font-size: 20px; /* サブリンクの文字サイズを調整 */
+            color: #555;
+            font-size: 20px;
         }
         ul ul li a:hover {
             color: #0056b3;
         }
 
-        /* 元のHTMLから持ってきたスタイル */
         .example4 {
             background: linear-gradient(
                 to right,
@@ -84,9 +84,9 @@
             animation: 5s example4 linear infinite;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            font-size: 50px; /* 元のHTMLのフォントサイズを適用 */
-            text-align: center; /* 中央寄せ */
-            margin-top: 20px; /* タイトルとの間隔を調整 */
+            font-size: 50px;
+            text-align: center;
+            margin-top: 20px;
         }
 
         @keyframes example4 {
@@ -99,15 +99,15 @@
     <div class="container">
         <h1 class="example4">いろいろあるよ</h1>
 
-        <p>こんなのがあるよー</p>
+        <p>「いろいろあぷり」のコンテンツは以下のリンクからご覧いただけます。</p>
 
-        <h2>役立ちアプリ</h2>
+        <h2>主要アプリ</h2>
         <ul>
             <li><a href="/any-app/app/time.html">正確な時計</a></li>
             <li>
-                <a href="/any-app/game/">ゲーム</a>
+                <a href="/any-app/game/">ゲーム一覧</a>
                 <ul>
-                    <li><a href="/any-app/game/cookie-clicker">Cookie Clicker (クッキークリッカー)</a></li>
+                    <li><a href="/any-app/game/cookie-clicker/index.html">Cookie Clicker (クッキークリッカー)</a></li>
                     <li><a href="/any-app/game/block-kuzushi.html">ブロック崩し</a></li>
                     <li><a href="/any-app/game/clicker-game.html">クリッカーゲーム</a></li>
                 </ul>
@@ -115,11 +115,11 @@
             <li><a href="/any-app/calendar">カレンダー</a></li>
         </ul>
 
-        <h2>その他のページ</h2>
+        <h2>その他のページ (例)</h2>
         <ul>
-            <li><a href="index.html">トップページ(このページ)</a></li>
-            <li><a href="about.html"></a></li>
-            <li><a href="contact.html"></a></li>
+            <li><a href="index.html">トップページ (このサイトマップがあるページ)</a></li>
+            <li><a href="about.html">このサイトについて</a></li>
+            <li><a href="contact.html">お問い合わせ</a></li>
         </ul>
     </div>
 </body>
