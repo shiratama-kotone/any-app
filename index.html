@@ -7,42 +7,51 @@
 <h1 class="example4">
   いろいろあるよ
 </h1>
-  <style>
-    body {
-      background-color: #f8f8f8;
-      font-size: 50px;
-      min-height: 100vh;
-      margin: 0;
-      font-family: sans-serif;
-      overflow: hidden;
+<style>
+  body {
+    background-color: #f8f8f8;
+    font-size: 50px;
+    min-height: 100vh;
+    margin: 0;
+    font-family: sans-serif;
+    overflow: hidden;
+  }
+
+  .example4 {
+    background: linear-gradient(
+      to right,
+      #e60000,
+      #f39800,
+      #fff100,
+      #009944,
+      #0068b7,
+      #1d2088,
+      #920783,
+      #e60000
+    )
+    0 / 200%; /* ここで背景のサイズを200%に設定しているのがポイント */
+    animation: 5s example4 linear infinite;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* --- ここから追加 --- */
+  @keyframes example4 {
+    from {
+      background-position: 0% 0%; /* グラデーションの開始位置 */
     }
+    to {
+      background-position: 200% 0%; /* グラデーションの終了位置。背景が200%なので、これで一巡してシームレスにループします */
+    }
+  }
+  /* --- ここまで追加 --- */
 
-    .example4 {
-background: linear-gradient(
-to right,
-#e60000,
-#f39800,
-#fff100,
-#009944,
-#0068b7,
-#1d2088,
-#920783,
-#e60000
-)
-0 / 200%;
-animation: 5s example4 linear infinite;
--webkit-background-clip: text;
--webkit-text-fill-color: transparent;
-}
-  </style>
+</style>
 </head>
-
 <body>
   <a href="/any-app/app/time.html">正確な時計</a>
 <br>
-  <a href="/any-app/game/block-kuzushi.html">ブロック崩しゲーム</a>
-  <br>
-  <a href="/any-app/game/clicker-game.html">クリッカーゲーム(ビックウェーブ)</a>
+  <a href="/any-app/game/">ゲーム一覧</a>
   <br>
   <a href="/any-app/calendar">カレンダー</a>
 </body>
