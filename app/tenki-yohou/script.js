@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 地域コードのマップを保持する変数
     let areaCodes = {};
+    // ユーザー入力と正規の地域名をマッピングするための変数
+    let cityNameToCodeMap = {};
 
     // primary_area.xml から地域コードを読み込む
     function loadAreaCodes() {
@@ -23,11 +25,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (let i = 0; i < areas.length; i++) {
                     const id = areas[i].getAttribute('id');
                     const title = areas[i].getAttribute('title');
-                    // title の '地方' や '県' を取り除いて、地域名とコードを紐付ける
-                    const cleanedTitle = title.replace(/地方$/, '').replace(/県$/, '');
-                    areaCodes[cleanedTitle] = id;
+                    
+                    // 地域名をクリーニングし、複数のバリエーションをマップに追加
+                    // 例: "福岡県" -> "福岡"
+                    // 例: "東京都" -> "東京"
+                    // 例: "千葉" -> "千葉" (primary_area.xmlのtitleがすでに市名の場合)
+                    
+                    // 完全一致を優先
+                    cityNameToCodeMap[title] = id; 
+                    
+                    // 「県」を取り除いた形
+                    if (title.endsWith('県')) {
+                        const noPrefTitle = title.slice(0, -1);
+                        cityNameToCodeMap[noPrefTitle] = id;
+                    }
+                    // 「都」を取り除いた形
+                    if (title.endsWith('都')) {
+                        const noPrefTitle = title.slice(0, -1);
+                        cityNameToCodeMap[noPrefTitle] = id;
+                    }
+                    // 「府」を取り除いた形 (大阪府, 京都府など)
+                    if (title.endsWith('府')) {
+                        const noPrefTitle = title.slice(0, -1);
+                        cityNameToCodeMap[noPrefTitle] = id;
+                    }
+                    // 「道」を取り除いた形 (北海道)
+                    if (title.endsWith('道')) {
+                        const noPrefTitle = title.slice(0, -1);
+                        cityNameToCodeMap[noPrefTitle] = id;
+                    }
+
+                    // さらに、より一般的な呼び方（例: 東京、大阪）も対応できるように追加
+                    // ただし、これらは`primary_area.xml`に存在するIDに限定される
+                    // ここでは、既にXMLから取得したtitleとidのマッピングを強化する
+                    // 例えば、titleが「福岡」であれば、それが直接のマップに入る
+                    // titleが「福岡県」であれば、「福岡県」と「福岡」の両方で検索できるようにする
                 }
-                console.log("地域コードが読み込まれました:", areaCodes);
+                console.log("地域コードが読み込まれました:", cityNameToCodeMap);
             })
             .catch(error => {
                 console.error("地域コードの読み込みに失敗しました:", error);
@@ -35,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     }
 
-    // 天気情報を取得して表示する関数
+    // 天気情報を取得して表示する関数 (変更なし)
     function fetchWeather(cityCode) {
         const API_URL = `https://weather.tsukumijima.net/api/forecast/city/${cityCode}`;
         weatherInfoDiv.innerHTML = '<p>天気情報を読み込み中...</p>';
@@ -112,7 +146,30 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const cityCode = areaCodes[inputCity]; // 入力された地域名に対応するコードを検索
+        // cityNameToCodeMap から入力された地域名に対応するコードを検索
+        // ユーザー入力が大文字・小文字を区別しないようにするために、一旦全て小文字に変換して比較
+        const normalizedInputCity = inputCity.toLowerCase();
+        let cityCode = null;
+
+        // まず完全一致（ケースインセンシティブ）で探す
+        for (const key in cityNameToCodeMap) {
+            if (key.toLowerCase() === normalizedInputCity) {
+                cityCode = cityNameToCodeMap[key];
+                break;
+            }
+        }
+        
+        // 完全一致で見つからなければ、部分一致も考慮 (例: "東京" で "東京都" を見つける)
+        if (!cityCode) {
+            for (const key in cityNameToCodeMap) {
+                if (key.toLowerCase().includes(normalizedInputCity) || normalizedInputCity.includes(key.toLowerCase())) {
+                    // より具体的な一致を優先するか、最初の見つかったものを採用するかは要検討
+                    // ここでは最初に見つかったものを採用
+                    cityCode = cityNameToCodeMap[key];
+                    break;
+                }
+            }
+        }
 
         if (cityCode) {
             fetchWeather(cityCode);
@@ -123,11 +180,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ページロード時に地域コードを読み込む
-    loadAreaCodes().then(() => {
-        // 初期表示として、福岡の天気を表示することも可能 (オプション)
-        // const fukuokaCode = areaCodes['福岡'];
-        // if (fukuokaCode) {
-        //     fetchWeather(fukuokaCode);
-        // }
-    });
+    loadAreaCodes();
 });
