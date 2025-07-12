@@ -13,36 +13,24 @@
     <div id="timer-controls">
         <div class="timer-setting">
             <div class="timer-row">
-                <input type="number" id="timer-input-1" value="0" min="0">
-                <input type="range" id="timer-slider-1" min="0" max="120" value="0">
-                <label for="timer-slider-1" id="slider-value-display-1">0 分</label>
+                <input type="number" id="timer-input-hours" value="0" min="0">
+                <input type="range" id="timer-slider-hours" min="0" max="23" value="0"> <label for="timer-slider-hours" id="slider-value-display-hours">0 時間</label>
             </div>
             <div class="timer-row">
-                <input type="number" id="timer-input-2" value="0" min="0">
-                <input type="range" id="timer-slider-2" min="0" max="120" value="0">
-                <label for="timer-slider-2" id="slider-value-display-2">0 分</label>
+                <input type="number" id="timer-input-minutes" value="0" min="0">
+                <input type="range" id="timer-slider-minutes" min="0" max="59" value="0"> <label for="timer-slider-minutes" id="slider-value-display-minutes">0 分</label>
             </div>
             <div class="timer-row">
-                <input type="number" id="timer-input-3" value="0" min="0">
-                <input type="range" id="timer-slider-3" min="0" max="120" value="0">
-                <label for="timer-slider-3" id="slider-value-display-3">0 分</label>
+                <input type="number" id="timer-input-seconds" value="0" min="0">
+                <input type="range" id="timer-slider-seconds" min="0" max="59" value="0"> <label for="timer-slider-seconds" id="slider-value-display-seconds">0 秒</label>
             </div>
 
-            <select id="timer-unit">
-                <option value="seconds">秒</option>
-                <option value="minutes" selected>分</option>
-                <option value="hours">時間</option>
-            </select>
-        </div>
+            </div>
         <div class="button-group">
             <button id="start-pause-button" class="timer-button start">スタート</button>
             <button id="reset-button" class="timer-button reset">リセット</button>
         </div>
     </div>
-
-    <script src="script.js"></script>
-</body>
-</html>
 
     <script src="script.js"></script>
 </body>
