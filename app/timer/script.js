@@ -80,35 +80,28 @@ function updateTimerDisplay() {
 }
 
 /**
- * Converts the input value from selected unit to total seconds.
- * @param {number} value The numerical value from the input.
- * @param {string} unit The selected unit ('seconds', 'minutes', 'hours').
- * @returns {number} The total seconds.
+ * Calculates total seconds from hours, minutes, and seconds input.
+ * @param {number} hours Hours value.
+ * @param {number} minutes Minutes value.
+ * @param {number} seconds Seconds value.
+ * @returns {number} Total seconds.
  */
-function convertToSeconds(value, unit) {
-    switch (unit) {
-        case 'seconds':
-            return value;
-        case 'minutes':
-            return value * 60;
-        case 'hours':
-            return value * 3600;
-        default:
-            return 0; // Should not happen with proper unit selection
-    }
+function calculateTotalSeconds(hours, minutes, seconds) {
+    return (hours * 3600) + (minutes * 60) + seconds;
 }
 
 /**
- * Initializes the timer based on the currently active slider/input value and selected unit.
- * This function is now simplified as updateTimerSetting handles the primary logic.
+ * Initializes the timer based on the current input values for hours, minutes, and seconds.
  */
 function initializeTimer() {
-    // ページロード時に、一番上の設定（timer-input-1とtimer-unit）を使って初期化
-    const initialInputValue = parseInt(document.getElementById("timer-input-1").value, 10);
-    const initialUnit = document.getElementById("timer-unit").value;
-    updateTimerSetting(initialInputValue, initialUnit, 1); // 1番目のタイマー設定を初期値として反映
-}
+    const hours = parseInt(document.getElementById("timer-input-hours").value, 10);
+    const minutes = parseInt(document.getElementById("timer-input-minutes").value, 10);
+    const seconds = parseInt(document.getElementById("timer-input-seconds").value, 10);
 
+    totalSeconds = calculateTotalSeconds(hours, minutes, seconds);
+    remainingSeconds = totalSeconds;
+    updateTimerDisplay();
+}
 
 /**
  * Starts or pauses the timer.
@@ -127,7 +120,7 @@ function toggleTimer() {
             return;
         }
         if (remainingSeconds <= 0) { // If timer finished, restart with the set duration
-            remainingSeconds = totalSeconds;
+            initializeTimer(); // Re-initialize from current input values
         }
         
         countdownInterval = setInterval(() => {
@@ -146,39 +139,40 @@ function toggleTimer() {
 function resetTimer() {
     clearInterval(countdownInterval);
     countdownInterval = null;
-    remainingSeconds = totalSeconds; // Reset to the initially set total seconds
-    updateTimerDisplay();
+    initializeTimer(); // Reset to the initially set total seconds
     document.getElementById("start-pause-button").textContent = "スタート";
     document.getElementById("start-pause-button").classList.remove("pause");
     document.getElementById("start-pause-button").classList.add("start");
 }
 
 /**
- * Updates the input field and totalSeconds when the slider or unit is moved.
- * This function also updates the totalSeconds and remainingSeconds based on the new value and unit.
+ * Updates the input field, slider, and display label for a specific unit (hours, minutes, or seconds).
+ * Then recalculates and updates the main timer's total seconds.
+ * @param {string} unitType The type of unit ('hours', 'minutes', 'seconds').
  * @param {number} value The current value from the slider or input.
- * @param {string} unit The currently selected unit ('seconds', 'minutes', 'hours').
- * @param {number} index The index of the timer row (1, 2, or 3).
  */
-function updateTimerSetting(value, unit, index) {
-    // 関連する要素のIDを動的に取得
-    const inputElement = document.getElementById(`timer-input-${index}`);
-    const sliderElement = document.getElementById(`timer-slider-${index}`);
-    const displayElement = document.getElementById(`slider-value-display-${index}`);
+function updateUnitSetting(unitType, value) {
+    const inputElement = document.getElementById(`timer-input-${unitType}`);
+    const sliderElement = document.getElementById(`timer-slider-${unitType}`);
+    const displayElement = document.getElementById(`slider-value-display-${unitType}`);
     
     // UIを更新
     if (inputElement) inputElement.value = value;
     if (sliderElement) sliderElement.value = value;
     if (displayElement) {
-        displayElement.textContent = `${value} ${
-            unit === 'seconds' ? '秒' : unit === 'minutes' ? '分' : '時間'
-        }`;
+        let labelText = "";
+        if (unitType === 'hours') labelText = "時間";
+        else if (unitType === 'minutes') labelText = "分";
+        else if (unitType === 'seconds') labelText = "秒";
+        displayElement.textContent = `${value} ${labelText}`;
     }
     
-    // ここで、**メインのタイマー（totalSeconds/remainingSeconds）は、
-    // 現在操作された行の値を反映するようにします。
-    // （複数の独立したタイマーではないため、最後の操作が全体のタイマーに影響します）**
-    totalSeconds = convertToSeconds(value, unit);
+    // 全ての入力値を取得してtotalSecondsを更新
+    const currentHours = parseInt(document.getElementById("timer-input-hours").value, 10) || 0;
+    const currentMinutes = parseInt(document.getElementById("timer-input-minutes").value, 10) || 0;
+    const currentSeconds = parseInt(document.getElementById("timer-input-seconds").value, 10) || 0;
+
+    totalSeconds = calculateTotalSeconds(currentHours, currentMinutes, currentSeconds);
     remainingSeconds = totalSeconds;
     updateTimerDisplay(); // Display immediately
     
@@ -189,56 +183,52 @@ function updateTimerSetting(value, unit, index) {
     document.getElementById("start-pause-button").classList.add("start");
 }
 
-// Event listeners for slider, input field, and unit selector
+// Event listeners for slider and input fields
 document.addEventListener("DOMContentLoaded", () => {
-    // 各タイマー行のイベントリスナーを設定
-    for (let i = 1; i <= 3; i++) {
-        const timerSlider = document.getElementById(`timer-slider-${i}`);
-        const timerInput = document.getElementById(`timer-input-${i}`);
-        const displayLabel = document.getElementById(`slider-value-display-${i}`);
+    const units = ['hours', 'minutes', 'seconds'];
+    
+    units.forEach(unitType => {
+        const timerSlider = document.getElementById(`timer-slider-${unitType}`);
+        const timerInput = document.getElementById(`timer-input-${unitType}`);
+        const displayLabel = document.getElementById(`slider-value-display-${unitType}`);
 
         // 初期表示設定 (各行のラベル)
         const initialValue = parseInt(timerInput.value, 10);
-        const unit = document.getElementById("timer-unit").value;
         if (displayLabel) {
-            displayLabel.textContent = `${initialValue} ${
-                unit === 'seconds' ? '秒' : unit === 'minutes' ? '分' : '時間'
-            }`;
+            let labelText = "";
+            if (unitType === 'hours') labelText = "時間";
+            else if (unitType === 'minutes') labelText = "分";
+            else if (unitType === 'seconds') labelText = "秒";
+            displayLabel.textContent = `${initialValue} ${labelText}`;
         }
         
         // スライダーのイベントリスナー
         timerSlider.addEventListener("input", (event) => {
             const value = parseInt(event.target.value, 10);
-            const currentUnit = document.getElementById("timer-unit").value;
-            updateTimerSetting(value, currentUnit, i);
+            updateUnitSetting(unitType, value);
         });
 
         // 入力フィールドのイベントリスナー
         timerInput.addEventListener("change", (event) => {
             let value = parseInt(event.target.value, 10);
-            if (isNaN(value) || value < 0) {
-                value = 0; // Default to 0 or a sensible minimum
-            }
-            event.target.value = value; // Update input field to clean value
-            const currentUnit = document.getElementById("timer-unit").value;
-            updateTimerSetting(value, currentUnit, i);
-        });
-    }
+            // 単位に応じた最大値チェック
+            let maxVal = 0;
+            if (unitType === 'hours') maxVal = 23;
+            else if (unitType === 'minutes') maxVal = 59;
+            else if (unitType === 'seconds') maxVal = 59;
 
-    const timerUnit = document.getElementById("timer-unit"); // Get unit selector
+            if (isNaN(value) || value < 0) {
+                value = 0; // デフォルトを0に
+            } else if (value > maxVal) {
+                value = maxVal; // 最大値を超えたら最大値に制限
+            }
+            event.target.value = value; // 入力フィールドの値をクリーンアップされた値に更新
+            updateUnitSetting(unitType, value);
+        });
+    });
+
     const startPauseButton = document.getElementById("start-pause-button");
     const resetButton = document.getElementById("reset-button");
-
-    // 単位セレクタのイベントリスナー (変更されたら、現在アクティブな設定を再適用)
-    timerUnit.addEventListener("change", (event) => {
-        // 現在一番上の入力欄の値を取得して、単位変更を適用
-        const value = parseInt(document.getElementById("timer-input-1").value, 10); 
-        const unit = event.target.value;
-        // 全ての表示を更新
-        for (let i = 1; i <= 3; i++) {
-            updateTimerSetting(value, unit, i);
-        }
-    });
 
     startPauseButton.addEventListener("click", toggleTimer);
     resetButton.addEventListener("click", resetTimer);
