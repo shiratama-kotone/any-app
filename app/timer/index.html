@@ -12,9 +12,22 @@
 
     <div id="timer-controls">
         <div class="timer-setting">
-            <label for="timer-slider" id="slider-value-display">0 分</label>
-            <input type="range" id="timer-slider" min="0" max="120" value="0">
-            <input type="number" id="timer-input" value="0" min="0">
+            <div class="timer-row">
+                <input type="number" id="timer-input-1" value="0" min="0">
+                <input type="range" id="timer-slider-1" min="0" max="120" value="0">
+                <label for="timer-slider-1" id="slider-value-display-1">0 分</label>
+            </div>
+            <div class="timer-row">
+                <input type="number" id="timer-input-2" value="0" min="0">
+                <input type="range" id="timer-slider-2" min="0" max="120" value="0">
+                <label for="timer-slider-2" id="slider-value-display-2">0 分</label>
+            </div>
+            <div class="timer-row">
+                <input type="number" id="timer-input-3" value="0" min="0">
+                <input type="range" id="timer-slider-3" min="0" max="120" value="0">
+                <label for="timer-slider-3" id="slider-value-display-3">0 分</label>
+            </div>
+
             <select id="timer-unit">
                 <option value="seconds">秒</option>
                 <option value="minutes" selected>分</option>
@@ -26,6 +39,10 @@
             <button id="reset-button" class="timer-button reset">リセット</button>
         </div>
     </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
 
     <script src="script.js"></script>
 </body>
