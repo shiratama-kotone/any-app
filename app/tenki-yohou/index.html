@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天気予報</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>天気予報</h1>
+        <div class="input-section">
+            <input type="text" id="city-input" placeholder="地域名を入力してください（例: 福岡, 東京）">
+            <button id="get-weather-btn">天気を取得</button>
+        </div>
+        <div id="error-message" class="error-message"></div>
+        <div id="weather-info">
+            <p>地域名を入力して「天気を取得」ボタンを押してください。</p>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
