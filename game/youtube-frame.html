@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>連立方程式を生成</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px 0;
+      width: 80%;
+    }
+    iframe {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>YouTube埋め込みツール</h1>
+  <input type="text" id="videoUrl" placeholder="YouTube動画URLを入力">
+  <button onclick="embedVideo()">埋め込み</button>
+  <div id="videoEmbed"></div>
+
+  <script>
+    function embedVideo() {
+      const urlInput = document.getElementById('videoUrl').value;
+      const embedUrl = urlInput
+        .replace("watch?v=", "embed/")
+        .replace("youtu.be/", "www.youtube.com/embed/");
+
+      const iframe = `<iframe width="560" height="315" src="${embedUrl}" frameborder="0" allowfullscreen></iframe>`;
+      document.getElementById('videoEmbed').innerHTML = iframe;
+    }
+  </script>
+</body>
+</html>
