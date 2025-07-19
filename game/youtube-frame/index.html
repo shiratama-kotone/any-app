@@ -3,38 +3,109 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>連立方程式を生成</title>
+  <title>YouTube埋め込みツール</title>
+  <!-- Tailwind CSS CDNを読み込みます -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 外部CSSファイルを読み込みます -->
+  <link rel="stylesheet" href="https://raw.githubusercontent.com/shiratama-kotone/any-app/refs/heads/main/style.css">
+  <!-- Zen Maru GothicフォントをGoogle Fontsから読み込みます -->
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
   <style>
+    /* Zen Maru Gothicフォントを適用 */
     body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 20px;
+      font-family: 'Zen Maru Gothic', sans-serif;
     }
-    input, button {
-      padding: 10px;
-      margin: 10px 0;
-      width: 80%;
+    /* iframeのレスポンシブ対応 */
+    .video-container {
+      position: relative;
+      width: 100%;
+      padding-bottom: 56.25%; /* 16:9 のアスペクト比 */
+      height: 0;
+      overflow: hidden;
+      border-radius: 0.5rem; /* 角丸を適用 */
     }
-    iframe {
-      margin-top: 20px;
+    .video-container iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
     }
   </style>
 </head>
-<body>
-  <h1>YouTube埋め込みツール</h1>
-  <input type="text" id="videoUrl" placeholder="YouTube動画URLを入力">
-  <button onclick="embedVideo()">埋め込み</button>
-  <div id="videoEmbed"></div>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+  <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+    <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">YouTube埋め込みツール</h1>
+
+    <!-- YouTube動画URL入力フィールド -->
+    <a href="/any-app/game/">ゲーム一覧に戻る</a>
+    <input
+      type="text"
+      id="videoUrl"
+      placeholder="YouTube動画URLを入力"
+      class="w-full p-3 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+    >
+
+    <!-- 埋め込みボタン -->
+    <button
+      onclick="embedVideo()"
+      class="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+    >
+      埋め込み
+    </button>
+
+    <!-- 動画埋め込み表示エリア -->
+    <div id="videoEmbed" class="mt-6">
+      <!-- ここに埋め込まれたYouTube動画が表示されます -->
+    </div>
+  </div>
 
   <script>
+    /**
+     * YouTube動画を埋め込む関数
+     */
     function embedVideo() {
       const urlInput = document.getElementById('videoUrl').value;
-      const embedUrl = urlInput
-        .replace("watch?v=", "embed/")
-        .replace("youtu.be/", "www.youtube.com/embed/");
+      let embedUrl = '';
 
-      const iframe = `<iframe width="560" height="315" src="${embedUrl}" frameborder="0" allowfullscreen></iframe>`;
-      document.getElementById('videoEmbed').innerHTML = iframe;
+      // YouTubeのURL形式をチェックし、埋め込みURLに変換
+      if (urlInput.includes("watch?v=")) {
+        embedUrl = urlInput.replace("watch?v=", "embed/");
+      } else if (urlInput.includes("youtu.be/")) {
+        embedUrl = urlInput.replace("youtu.be/", "www.youtube.com/embed/");
+      } else if (urlInput.includes("shorts/")) {
+        // YouTubeショート動画のURLを処理
+        const videoId = urlInput.split('shorts/')[1];
+        if (videoId) {
+          embedUrl = `https://www.youtube.com/embed/${videoId}`;
+        }
+      } else if (urlInput.includes("watch/")) {
+        // 新しいYouTube URL形式 (例: https://www.youtube.com/watch/wqI4ZcIlKEY) を処理
+        const videoId = urlInput.split('watch/')[1];
+        if (videoId) {
+          embedUrl = `https://www.youtube.com/embed/${videoId}`;
+        }
+      }
+      
+      // embedUrlが空の場合は、無効なURLとしてエラーメッセージを表示
+      if (!embedUrl) {
+        document.getElementById('videoEmbed').innerHTML = `
+          <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <strong class="font-bold">エラー!</strong>
+            <span class="block sm:inline">有効なYouTube動画URLを入力してください。</span>
+          </div>
+        `;
+        return;
+      }
+
+      // iframe要素を生成し、動画埋め込みエリアに挿入
+      const iframeHtml = `
+        <div class="video-container">
+          <iframe src="${embedUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
+      `;
+      document.getElementById('videoEmbed').innerHTML = iframeHtml;
     }
   </script>
 </body>
