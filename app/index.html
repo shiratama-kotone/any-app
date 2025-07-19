@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>いろいろあぷり - アプリ一覧</title>
+    <style>
+        body {
+            background-color: #f8f8f8;
+            font-family: sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden; /* 横方向のスクロールバーを非表示にする */
+            color: #333;
+            font-size: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 50px auto; /* 上部の余白は50pxを維持 */
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding-bottom: 80px; /* ここを調整して下部の余白を増やします */
+        }
+        h1 {
+            color: #0056b3;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 40px;
+        }
+        h2 {
+            color: #0056b3;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 5px;
+            margin-top: 30px;
+            font-size: 28px;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        ul li {
+            margin-bottom: 10px;
+        }
+        ul li a {
+            text-decoration: none;
+            color: #007bff;
+            font-weight: bold;
+            font-size: 22px;
+        }
+        ul li a:hover {
+            text-decoration: underline;
+            color: #0056b3;
+        }
+        ul ul {
+            margin-left: 20px;
+            margin-top: 5px;
+            border-left: 2px solid #eee;
+            padding-left: 10px;
+        }
+        ul ul li a {
+            font-weight: normal;
+            color: #555;
+            font-size: 20px;
+        }
+        ul ul li a:hover {
+            color: #0056b3;
+        }
+
+        .example4 {
+            background: linear-gradient(
+                to right,
+                #e60000,
+                #f39800,
+                #fff100,
+                #009944,
+                #0068b7,
+                #1d2088,
+                #920783,
+                #e60000
+            ) 0 / 200%;
+            animation: 5s example4 linear infinite;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 50px;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        @keyframes example4 {
+            from { background-position: 0% 0%; }
+            to { background-position: 200% 0%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="example4">いろいろあるよ</h1>
+
+        <p>こんなのがあるよ</p>
+
+        <h2>アプリ一覧</h2>
+        <ul>
+            <li><a href="/any-app/app/time/">正確な時計</a></li>
+            <li><a href="/any-app/app/calendar">カレンダー</a></li>
+            <li><a href="/any-app/timer">タイマー</a></li>
+        </ul>
+    </div>
+</body>
+</html>
