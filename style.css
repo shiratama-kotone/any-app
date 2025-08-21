@@ -1016,3 +1016,38 @@
 body{
 font-family: Zen Maru Goshic;
 }
+
+
+
+
+
+
+
+
+.strawpoll-container {
+  /* 最大幅を640pxに設定。より広い画面でも見た目が崩れません */
+  max-width: 640px;
+  /* 左右中央に配置します */
+  margin: 0 auto;
+  /* フレックスボックスを使って内部要素を縦に並べます */
+  display: flex;
+  flex-direction: column;
+  /* 任意: コンテナにパディングやボーダーを追加してデザインを調整できます */
+  /* padding: 20px; */
+  /* border: 1px solid #ccc; */
+  /* border-radius: 8px; */
+}
+
+.strawpoll-embed {
+  /* 親要素いっぱいに広がるように設定 */
+  width: 100%;
+  flex-grow: 1;
+  height: 480px;
+}
+
+.strawpoll-link {
+  /* リンクのテキストを中央に配置 */
+  text-align: center;
+  /* 上下に余白を設定 */
+  margin-top: 15px;
+}
