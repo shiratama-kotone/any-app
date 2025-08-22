@@ -18,18 +18,45 @@ body {
 .slot {
     width: 100px;
     height: 100px;
-    background-color: #fff;
     border: 3px solid #333;
     border-radius: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 3rem;
-    overflow: hidden; /* 回転する部分を隠すため */
-    color: #333;
-    font-weight: bold;
+    background-color: #fff;
+    overflow: hidden; /* これが重要！枠からはみ出る部分を隠す */
+    position: relative;
 }
 
+/* ここからスロットの見た目の改良 */
+.slot::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 1000%; /* 絵柄の数が少ない場合はここを調整 */
+    /* ここに絵文字を並べます。複数行にすると見やすいです。 */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='1000'%3E%3Ctext x='50' y='100' font-size='80' text-anchor='middle' alignment-baseline='middle'%3E🍒%3C/text%3E%3Ctext x='50' y='200' font-size='80' text-anchor='middle' alignment-baseline='middle'%3E🍋%3C/text%3E%3Ctext x='50' y='300' font-size='80' text-anchor='middle' alignment-baseline='middle'%3E🔔%3C/text%3E%3Ctext x='50' y='400' font-size='80' text-anchor='middle' alignment-baseline='middle'%3E🍉%3C/text%3E%3Ctext x='50' y='500' font-size='80' text-anchor='middle' alignment-baseline='middle'%3E⭐%3C/text%3E%3Ctext x='50' y='600' font-size='80' text-anchor='middle' alignment-baseline='middle'%3E7️⃣%3C/text%3E%3C/svg%3E");
+    background-size: 100% 100%;
+}
+
+/* スロットの回転アニメーション */
+@keyframes spin {
+    0% {
+        transform: translateY(-90%);
+    }
+    100% {
+        transform: translateY(0%);
+    }
+}
+
+.spinning::after {
+    animation: spin 0.1s linear infinite; /* 無限にループ */
+}
+
+.stop-animation::after {
+    animation: none; /* アニメーションを停止 */
+}
+
+/* ボタンのスタイルは前回と同じ */
 .button-container {
     text-align: center;
 }
