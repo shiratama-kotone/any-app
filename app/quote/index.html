@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, initial-scale=1.0">
+    <title>名言メーカー</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="controls">
+            <h2>名言メーカー</h2>
+            <div class="upload-area" id="dropArea">
+                画像をドラッグ＆ドロップ
+            </div>
+            <label for="imageUpload">またはファイルを選択</label>
+            <input type="file" id="imageUpload" accept="image/*">
+            <label for="imageURL">またはURLを貼り付け</label>
+            <input type="text" id="imageURL" placeholder="画像のURLをここに貼り付け">
+            <label for="quoteText">名言</label>
+            <textarea id="quoteText" rows="3" placeholder="ここに名言を入力"></textarea>
+            <label for="authorText">発言者</label>
+            <input type="text" id="authorText" placeholder="発言者を入力">
+            <button id="downloadButton">画像ダウンロード</button>
+        </div>
+        <div class="canvas-container">
+            <canvas id="quoteCanvas" width="1920" height="1080"></canvas>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
