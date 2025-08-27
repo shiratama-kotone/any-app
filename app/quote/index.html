@@ -2,31 +2,37 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=1920, initial-scale=1.0">
-    <title>名言メーカー</title>
+    <title>Make it a Quote Generator</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <div class="controls">
-            <h2>名言メーカー</h2>
-            <div class="upload-area" id="dropArea">
-                画像をドラッグ＆ドロップ
+    <main>
+        <h1>Make it a Quote Generator</h1>
+        <section class="input-area">
+            <div class="upload-box">
+                <label class="upload-label">
+                    画像アップロード
+                    <input type="file" id="imageUpload" accept="image/*">
+                </label>
+                <input type="url" id="imageURL" placeholder="画像URLを貼り付けてもOK">
+                <div id="dropArea" class="drop-area">ここに画像をドラッグ＆ドロップ</div>
             </div>
-            <label for="imageUpload">またはファイルを選択</label>
-            <input type="file" id="imageUpload" accept="image/*">
-            <label for="imageURL">またはURLを貼り付け</label>
-            <input type="text" id="imageURL" placeholder="画像のURLをここに貼り付け">
-            <label for="quoteText">名言</label>
-            <textarea id="quoteText" rows="3" placeholder="ここに名言を入力"></textarea>
-            <label for="authorText">発言者</label>
-            <input type="text" id="authorText" placeholder="発言者を入力">
-            <button id="downloadButton">画像ダウンロード</button>
-        </div>
-        <div class="canvas-container">
-            <canvas id="quoteCanvas" width="1920" height="1080"></canvas>
-        </div>
-    </div>
+            <div class="quote-box">
+                <textarea id="quoteText" placeholder="名言を入力" rows="2"></textarea>
+                <input id="authorText" placeholder="作者名（任意）">
+            </div>
+        </section>
+        <section class="preview-area">
+            <div class="canvas-wrapper">
+                <canvas id="quoteCanvas"></canvas>
+            </div>
+            <button id="downloadButton">画像をダウンロード</button>
+        </section>
+    </main>
+    <footer>
+        <small>© 2024 Make it a Quote Generator</small>
+    </footer>
     <script src="script.js"></script>
 </body>
 </html>
