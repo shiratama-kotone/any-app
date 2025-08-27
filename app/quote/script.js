@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadButton = document.getElementById('downloadButton');
     const dropArea = document.getElementById('dropArea');
 
-    // キャンバスサイズ 幅4000, 高さ2000
+    // 描画サイズ（解像度）は固定。表示サイズはCSSで可変
     const CANVAS_WIDTH = 4000;
     const CANVAS_HEIGHT = 2000;
     canvas.width = CANVAS_WIDTH;
@@ -84,15 +84,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function drawCanvas() {
         ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-        // 右半分（正方形2000x2000）を黒で塗りつぶし
+        // 右半分（2000x2000）を黒で塗りつぶし
         ctx.fillStyle = "#000";
         ctx.fillRect(HALF_SIZE, 0, HALF_SIZE, CANVAS_HEIGHT);
 
-        // 左半分（正方形2000x2000）に画像を最大限収めて描画（縦横比維持、右端が中央に合う）
+        // 左半分（2000x2000）に画像を最大限収めて描画（縦横比維持、右端が中央に合う）
         if (userImage && userImage.complete && userImage.naturalWidth > 0) {
             const imgW = userImage.naturalWidth;
             const imgH = userImage.naturalHeight;
-            // スケールを計算（正方形に収める）
+            // 左半分に収めるスケール（正方形に収める）
             const scale = Math.min(HALF_SIZE / imgW, CANVAS_HEIGHT / imgH);
             const drawWidth = imgW * scale;
             const drawHeight = imgH * scale;
