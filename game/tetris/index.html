@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>テトリス</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <canvas id="board" width="300" height="600"></canvas>
+    <div class="sidebar">
+      <h2>Next</h2>
+      <div id="next-container">
+        <canvas id="next0" width="120" height="120"></canvas>
+        <canvas id="next1" width="80" height="80"></canvas>
+        <canvas id="next2" width="64" height="64"></canvas>
+        <canvas id="next3" width="50" height="50"></canvas>
+        <canvas id="next4" width="40" height="40"></canvas>
+      </div>
+      <div id="score-box">SCORE: <span id="score">0</span></div>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
