@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>100の質問</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+        }
+        .question-container {
+            margin: 15px 0;
+        }
+        .question {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        textarea {
+            width: 100%;
+            max-width: 600px;
+            height: 60px;
+            margin-top: 5px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        #copyButton {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #copyButton:hover {
+            background-color: #45a049;
+        }
+        #copyText {
+            margin: 20px 0;
+            font-style: italic;
+            color: #555;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>100の質問</h1>
+    <form id="questionForm">
+        <div class="question-container">
+            <div class="question">1. 普段どんな名前で呼ばれてる？</div>
+            <textarea name="q1"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">2. ニックネームやあだ名の由来は？</div>
+            <textarea name="q2"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">3. 誕生日いつ？星座は何？</div>
+            <textarea name="q3"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">4. 出身地はどこ？今もそこに住んでる？</div>
+            <textarea name="q4"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">5. 血液型って信じる？自分の血液型は？</div>
+            <textarea name="q5"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">6. 好きな食べ物トップ3を教えて！</div>
+            <textarea name="q6"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">7. めっちゃ嫌いな食べ物は？</div>
+            <textarea name="q7"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">8. 得意な料理ってある？どんなの？</div>
+            <textarea name="q8"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">9. 好きな飲み物は？お酒飲む？</div>
+            <textarea name="q9"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">10. コーヒー派？紅茶派？それとも別？</div>
+            <textarea name="q10"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">11. 朝型？夜型？</div>
+            <textarea name="q11"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">12. 好きな季節とその理由は？</div>
+            <textarea name="q12"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">13. 子供の頃の夢って何だった？</div>
+            <textarea name="q13"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">14. 今の仕事や目指してる夢は？</div>
+            <textarea name="q14"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">15. ペット飼ってる？飼いたい動物は？</div>
+            <textarea name="q15"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">16. 好きな色は何？その色にこだわりある？</div>
+            <textarea name="q16"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">17. 趣味は何？どれくらいハマってる？</div>
+            <textarea name="q17"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">18. 休日の過ごし方ってどんな感じ？</div>
+            <textarea name="q18"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">19. 最近ハマってることは？</div>
+            <textarea name="q19"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">20. 自分を一言で表すなら？</div>
+            <textarea name="q20"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">21. 初恋って何歳のとき？</div>
+            <textarea name="q21"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">22. 好きな人のタイプってどんな人？</div>
+            <textarea name="q22"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">23. 恋愛で大事にしてることって？</div>
+            <textarea name="q23"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">24. デートで行きたい場所は？</div>
+            <textarea name="q24"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">25. 初デートの理想のプランは？</div>
+            <textarea name="q25"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">26. 告白する派？される派？</div>
+            <textarea name="q26"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">27. 恋人に求める一番の条件は？</div>
+            <textarea name="q27"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">28. 恋愛での失敗談教えて！</div>
+            <textarea name="q28"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">29. 理想のプロポーズってどんなの？</div>
+            <textarea name="q29"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">30. キスってどんなタイミングが好き？</div>
+            <textarea name="q30"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">31. ハグしたいときはどんなとき？</div>
+            <textarea name="q31"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">32. 恋人にされてキュンとする行動は？</div>
+            <textarea name="q32"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">33. 恋愛で「これは無理！」ってラインは？</div>
+            <textarea name="q33"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">34. 遠距離恋愛ってアリ？ナシ？</div>
+            <textarea name="q34"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">35. 好きな人に送るLINE、どんな感じ？</div>
+            <textarea name="q35"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">36. 好きな恋愛映画やドラマは？</div>
+            <textarea name="q36"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">37. 恋人としたいアクティビティは？</div>
+            <textarea name="q37"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">38. 嫉妬する？どんなときに？</div>
+            <textarea name="q38"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">39. 恋人に秘密って持つタイプ？</div>
+            <textarea name="q39"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">40. 理想の結婚生活ってどんなの？</div>
+            <textarea name="q40"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">41. 自分の中で「セクシー」だと思うパーツは？</div>
+            <textarea name="q41"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">42. 相手のどんな仕草にドキッとする？</div>
+            <textarea name="q42"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">43. 好きな香水や匂いってある？</div>
+            <textarea name="q43"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">44. どんな服着てる人に惹かれる？</div>
+            <textarea name="q44"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">45. デートで相手が着てほしい服は？</div>
+            <textarea name="q45"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">46. 自分を「色」に例えるなら何色？</div>
+            <textarea name="q46"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">47. 夜の雰囲気って好き？どんな感じが理想？</div>
+            <textarea name="q47"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">48. ロマンチックなムードってどうやって作る？</div>
+            <textarea name="q48"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">49. どんなキスが好き？ソフト？情熱的？</div>
+            <textarea name="q49"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">50. 恋人と過ごす夜の理想のシチュエーションは？</div>
+            <textarea name="q50"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">51. ドキドキする恋愛の瞬間ってどんなとき？</div>
+            <textarea name="q51"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">52. 相手のどんな声に惹かれる？</div>
+            <textarea name="q52"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">53. 好きな人の寝顔って見たい？見られたくない？</div>
+            <textarea name="q53"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">54. どんな下着のスタイルが好き？（自分or相手）</div>
+            <textarea name="q54"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">55. 恋人に着てほしい部屋着は？</div>
+            <textarea name="q55"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">56. デートで「ちょっと大胆かな？」って行動は？</div>
+            <textarea name="q56"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">57. 恋愛で「やばかった！」って思い出は？</div>
+            <textarea name="q57"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">58. どんなタッチに弱い？（肩とか手とか）</div>
+            <textarea name="q58"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">59. 恋人と一緒にお風呂ってアリ？</div>
+            <textarea name="q59"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">60. 夜景見ながら何したい？</div>
+            <textarea name="q60"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">61. 好きな映画トップ3は？</div>
+            <textarea name="q61"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">62. ハマったドラマやアニメ教えて！</div>
+            <textarea name="q62"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">63. 好きな音楽ジャンルは？</div>
+            <textarea name="q63"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">64. カラオケの十八番って何？</div>
+            <textarea name="q64"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">65. ライブやコンサート行ったことある？</div>
+            <textarea name="q65"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">66. 好きなアーティストやバンドは？</div>
+            <textarea name="q66"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">67. 最近読んだ本や漫画でオススメは？</div>
+            <textarea name="q67"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">68. ゲームする？好きなゲームは？</div>
+            <textarea name="q68"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">69. スポーツ得意？観るの好き？</div>
+            <textarea name="q69"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">70. 好きなYouTuberや配信者は？</div>
+            <textarea name="q70"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">71. ハマってるSNSって何？</div>
+            <textarea name="q71"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">72. どんな写真をよく撮る？</div>
+            <textarea name="q72"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">73. 旅行で行きたい場所は？</div>
+            <textarea name="q73"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">74. 過去の旅行で一番の思い出は？</div>
+            <textarea name="q74"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">75. テーマパーク派？自然派？</div>
+            <textarea name="q75"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">76. どんなお笑い好き？</div>
+            <textarea name="q76"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">77. 好きな漫画のキャラは？</div>
+            <textarea name="q77"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">78. アートや美術館って興味ある？</div>
+            <textarea name="q78"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">79. 自分で何か作るの好き？（DIYとか）</div>
+            <textarea name="q79"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">80. ハマったアプリやゲーム教えて！</div>
+            <textarea name="q80"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">81. 人生で一番大事にしてることって？</div>
+            <textarea name="q81"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">82. 自分の中で変えたい部分は？</div>
+            <textarea name="q82"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">83. 10年後の自分、どんな風になってたい？</div>
+            <textarea name="q83"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">84. 幸せを感じる瞬間ってどんなとき？</div>
+            <textarea name="q84"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">85. 一番怖いものや嫌いなものは？</div>
+            <textarea name="q85"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">86. 人生で一番感動した出来事は？</div>
+            <textarea name="q86"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">87. 友達に求める一番のことは？</div>
+            <textarea name="q87"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">88. 自分を誇りに思うことって？</div>
+            <textarea name="q88"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">89. 後悔してる過去の選択ってある？</div>
+            <textarea name="q89"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">90. タイムマシンあったら、過去？未来？</div>
+            <textarea name="q90"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">91. 一億円もらったら何に使う？</div>
+            <textarea name="q91"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">92. 無人島に一つ持っていくなら？</div>
+            <textarea name="q92"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">93. 人生のモットーや座右の銘は？</div>
+            <textarea name="q93"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">94. どんなときに泣いちゃう？</div>
+            <textarea name="q94"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">95. 自分を動物に例えるなら？</div>
+            <textarea name="q95"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">96. 世界を変えるなら何したい？</div>
+            <textarea name="q96"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">97. 運命や縁って信じる？</div>
+            <textarea name="q97"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">98. 一生に一度はやりたいことって？</div>
+            <textarea name="q98"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">99. 今一番感謝してる人は誰？</div>
+            <textarea name="q99"></textarea>
+        </div>
+        <div class="question-container">
+            <div class="question">100. 自分を愛してる？どれくらい？</div>
+            <textarea name="q100"></textarea>
+        </div>
+    </form>
+    <div id="copyText">入力した回答を全てコピーできます！</div>
+    <button id="copyButton">回答をコピー</button>
+
+    <script>
+        document.getElementById('copyButton').addEventListener('click', function() {
+            const questions = [
+                "普段どんな名前で呼ばれてる？",
+                "ニックネームやあだ名の由来は？",
+                "誕生日いつ？星座は何？",
+                "出身地はどこ？今もそこに住んでる？",
+                "血液型って信じる？自分の血液型は？",
+                "好きな食べ物トップ3を教えて！",
+                "めっちゃ嫌いな食べ物は？",
+                "得意な料理ってある？どんなの？",
+                "好きな飲み物は？お酒飲む？",
+                "コーヒー派？紅茶派？それとも別？",
+                "朝型？夜型？",
+                "好きな季節とその理由は？",
+                "子供の頃の夢って何だった？",
+                "今の仕事や目指してる夢は？",
+                "ペット飼ってる？飼いたい動物は？",
+                "好きな色は何？その色にこだわりある？",
+                "趣味は何？どれくらいハマってる？",
+                "休日の過ごし方ってどんな感じ？",
+                "最近ハマってることは？",
+                "自分を一言で表すなら？",
+                "初恋って何歳のとき？",
+                "好きな人のタイプってどんな人？",
+                "恋愛で大事にしてることって？",
+                "デートで行きたい場所は？",
+                "初デートの理想のプランは？",
+                "告白する派？される派？",
+                "恋人に求める一番の条件は？",
+                "恋愛での失敗談教えて！",
+                "理想のプロポーズってどんなの？",
+                "キスってどんなタイミングが好き？",
+                "ハグしたいときはどんなとき？",
+                "恋人にされてキュンとする行動は？",
+                "恋愛で「これは無理！」ってラインは？",
+                "遠距離恋愛ってアリ？ナシ？",
+                "好きな人に送るLINE、どんな感じ？",
+                "好きな恋愛映画やドラマは？",
+                "恋人としたいアクティビティは？",
+                "嫉妬する？どんなときに？",
+                "恋人に秘密って持つタイプ？",
+                "理想の結婚生活ってどんなの？",
+                "自分の中で「セクシー」だと思うパーツは？",
+                "相手のどんな仕草にドキッとする？",
+                "好きな香水や匂いってある？",
+                "どんな服着てる人に惹かれる？",
+                "デートで相手が着てほしい服は？",
+                "自分を「色」に例えるなら何色？",
+                "夜の雰囲気って好き？どんな感じが理想？",
+                "ロマンチックなムードってどうやって作る？",
+                "どんなキスが好き？ソフト？情熱的？",
+                "恋人と過ごす夜の理想のシチュエーションは？",
+                "ドキドキする恋愛の瞬間ってどんなとき？",
+                "相手のどんな声に惹かれる？",
+                "好きな人の寝顔って見たい？見られたくない？",
+                "どんな下着のスタイルが好き？（自分or相手）",
+                "恋人に着てほしい部屋着は？",
+                "デートで「ちょっと大胆かな？」って行動は？",
+                "恋愛で「やばかった！」って思い出は？",
+                "どんなタッチに弱い？（肩とか手とか）",
+                "恋人と一緒にお風呂ってアリ？",
+                "夜景見ながら何したい？",
+                "好きな映画トップ3は？",
+                "ハマったドラマやアニメ教えて！",
+                "好きな音楽ジャンルは？",
+                "カラオケの十八番って何？",
+                "ライブやコンサート行ったことある？",
+                "好きなアーティストやバンドは？",
+                "最近読んだ本や漫画でオススメは？",
+                "ゲームする？好きなゲームは？",
+                "スポーツ得意？観るの好き？",
+                "好きなYouTuberや配信者は？",
+                "ハマってるSNSって何？",
+                "どんな写真をよく撮る？",
+                "旅行で行きたい場所は？",
+                "過去の旅行で一番の思い出は？",
+                "テーマパーク派？自然派？",
+                "どんなお笑い好き？",
+                "好きな漫画のキャラは？",
+                "アートや美術館って興味ある？",
+                "自分で何か作るの好き？（DIYとか）",
+                "ハマったアプリやゲーム教えて！",
+                "人生で一番大事にしてることって？",
+                "自分の中で変えたい部分は？",
+                "10年後の自分、どんな風になってたい？",
+                "幸せを感じる瞬間ってどんなとき？",
+                "一番怖いものや嫌いなものは？",
+                "人生で一番感動した出来事は？",
+                "友達に求める一番のことは？",
+                "自分を誇りに思うことって？",
+                "後悔してる過去の選択ってある？",
+                "タイムマシンあったら、過去？未来？",
+                "一億円もらったら何に使う？",
+                "無人島に一つ持っていくなら？",
+                "人生のモットーや座右の銘は？",
+                "どんなときに泣いちゃう？",
+                "自分を動物に例えるなら？",
+                "世界を変えるなら何したい？",
+                "運命や縁って信じる？",
+                "一生に一度はやりたいことって？",
+                "今一番感謝してる人は誰？",
+                "自分を愛してる？どれくらい？"
+            ];
+
+            let copyText = '';
+            questions.forEach((question, index) => {
+                const answer = document.querySelector(`textarea[name="q${index + 1}"]`).value;
+                if (answer.trim() !== '') {
+                    copyText += `${question}\n${answer}\n\n`;
+                }
+            });
+
+            navigator.clipboard.writeText(copyText).then(() => {
+                alert('回答がクリップボードにコピーされました！');
+            }).catch(err => {
+                console.error('コピーに失敗しました: ', err);
+                alert('コピーに失敗しました。');
+            });
+        });
+    </script>
+</body>
+</html>
