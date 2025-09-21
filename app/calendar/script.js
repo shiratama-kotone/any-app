@@ -5,7 +5,7 @@ const anniversaries = [
   { month: 6, day: 7, label: "作成日" },     // 7月7日
   { month: 1, day: 14, label: "バレンタインデー" },
   { month: 2, day: 3, label: "ひなまつり" },
-  { month: 9, day: 30, label: "プロセカ周年"},
+  { month: 8, day: 30, label: "プロセカ周年"},
   { month: 10, day: 22, label: "いい夫婦の日" },
   { month: 11, day: 24, label: "クリスマス・イブ" },
   { month: 11, day: 25, label: "クリスマス" },
