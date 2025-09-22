@@ -1,148 +1,138 @@
-function setCookie(name,value,days=365){
-  document.cookie=`${name}=${encodeURIComponent(value)};max-age=${days*86400};path=/`;
+var realtime = document.getElementById("realtime");
+var dateDisplay = document.getElementById("date-display");
+var ampmDisplay = document.getElementById("ampm-display");
+var fontSelector = document.getElementById("font-selector");
+var analogCanvas = document.getElementById("analog-clock");
+var ctx = analogCanvas.getContext("2d");
+var modeToggle = document.getElementById("mode-toggle");
+
+var analogMode = false;
+
+// フォント切替
+fontSelector.addEventListener("change", function () {
+  realtime.style.fontFamily = fontSelector.value;
+  dateDisplay.style.fontFamily = fontSelector.value;
+  ampmDisplay.style.fontFamily = fontSelector.value;
+});
+
+// モード切替
+modeToggle.addEventListener("click", function () {
+  analogMode = !analogMode;
+  if (analogMode) {
+    realtime.style.display = "none";
+    document.getElementById("info-bottom").style.display = "none";
+    fontSelector.style.display = "none";
+    analogCanvas.style.display = "block";
+  } else {
+    realtime.style.display = "block";
+    document.getElementById("info-bottom").style.display = "flex";
+    fontSelector.style.display = "inline-block";
+    analogCanvas.style.display = "none";
+  }
+});
+
+// 時刻更新
+function updateClock() {
+  var now = new Date();
+  var h = now.getHours();
+  var m = now.getMinutes();
+  var s = now.getSeconds();
+  var ms = now.getMilliseconds();
+
+  var displayH = h % 12 || 12;
+  var ampm = h >= 12 ? "PM" : "AM";
+  var timeStr = displayH.toString().padStart(2, "0") + ":" +
+                m.toString().padStart(2, "0") + ":" +
+                s.toString().padStart(2, "0");
+  var dateStr = now.getFullYear() + "/" +
+                (now.getMonth() + 1) + "/" +
+                now.getDate();
+
+  if (!analogMode) {
+    realtime.textContent = timeStr;
+    dateDisplay.textContent = dateStr;
+    ampmDisplay.textContent = ampm;
+  }
+
+  drawAnalog(h, m, s, ms);
+  requestAnimationFrame(updateClock);
 }
-function getCookie(name){
-  const m=document.cookie.match(new RegExp("(^| )"+name+"=([^;]+)"));
-  return m?decodeURIComponent(m[2]):null;
-}
 
-let offset=0; // NTP補正
-async function syncTime(){
-  try{
-    const res=await fetch("https://worldtimeapi.org/api/ip");
-    const data=await res.json();
-    const serverTime=new Date(data.datetime).getTime();
-    offset=serverTime-Date.now();
-  }catch(e){ offset=0; }
-}
-syncTime();
+// アナログ時計描画
+function drawAnalog(h, m, s, ms) {
+  if (!analogMode) return;
+  var width = analogCanvas.width = analogCanvas.offsetWidth;
+  var height = analogCanvas.height = analogCanvas.offsetWidth;
+  var r = width / 2;
+  ctx.clearRect(0, 0, width, height);
+  ctx.save();
+  ctx.translate(r, r);
 
-function twoDigit(n){ return n<10 ? "0"+n : n; }
+  // 盤面
+  ctx.beginPath();
+  ctx.arc(0, 0, r - 5, 0, 2 * Math.PI);
+  ctx.strokeStyle = getComputedStyle(document.body).color;
+  ctx.lineWidth = 4;
+  ctx.stroke();
 
-function drawAnalogFavicon(date){
-  const canvas=document.createElement('canvas');
-  canvas.width=64;canvas.height=64;
-  const ctx=canvas.getContext('2d');
-  const cx=32,cy=32,r=28;
-
-  ctx.fillStyle="#222";ctx.fillRect(0,0,64,64);
-  ctx.strokeStyle="#fff";ctx.lineWidth=2;
-  ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);ctx.stroke();
-
-  ctx.fillStyle="#fff";
-  for(let i=0;i<12;i++){
-    const ang=i*Math.PI/6;
-    const x=cx+Math.sin(ang)*r*0.85;
-    const y=cy-Math.cos(ang)*r*0.85;
+  // 目盛
+  for (var i = 0; i < 60; i++) {
+    ctx.rotate(Math.PI / 30);
     ctx.beginPath();
-    ctx.arc(x,y,(i%3===0)?2:1,0,2*Math.PI);
-    ctx.fill();
+    ctx.moveTo(0, -r + 5);
+    ctx.lineTo(0, -r + (i % 5 === 0 ? 15 : 10));
+    ctx.stroke();
   }
-  const h=(date.getHours()%12)+date.getMinutes()/60;
-  const m=date.getMinutes()+date.getSeconds()/60;
-  const s=date.getSeconds();
 
-  const hAng=h*Math.PI/6;
-  ctx.strokeStyle="#fff";ctx.lineWidth=3;
-  ctx.beginPath();ctx.moveTo(cx,cy);
-  ctx.lineTo(cx+Math.sin(hAng)*r*0.5, cy-Math.cos(hAng)*r*0.5);ctx.stroke();
+  // 時・分・秒の角度(滑らかに)
+  var sec = (s + ms / 1000) * Math.PI / 30;
+  var min = (m + s / 60) * Math.PI / 30;
+  var hr = ((h % 12) + m / 60) * Math.PI / 6;
 
-  const mAng=m*Math.PI/30;
-  ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx,cy);
-  ctx.lineTo(cx+Math.sin(mAng)*r*0.7, cy-Math.cos(mAng)*r*0.7);ctx.stroke();
+  // 時針
+  ctx.save();
+  ctx.rotate(hr);
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(0, 10);
+  ctx.lineTo(0, -r * 0.5);
+  ctx.stroke();
+  ctx.restore();
 
-  const sAng=s*Math.PI/30;
-  ctx.strokeStyle="red";ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(cx,cy);
-  ctx.lineTo(cx+Math.sin(sAng)*r*0.8, cy-Math.cos(sAng)*r*0.8);ctx.stroke();
+  // 分針
+  ctx.save();
+  ctx.rotate(min);
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(0, 15);
+  ctx.lineTo(0, -r * 0.7);
+  ctx.stroke();
+  ctx.restore();
 
-  document.getElementById("dynamic-favicon").href=canvas.toDataURL();
+  // 秒針
+  ctx.save();
+  ctx.rotate(sec);
+  ctx.strokeStyle = "red";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, 20);
+  ctx.lineTo(0, -r * 0.85);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.restore();
 }
 
-let isAnalog=false;
-function showClock(){
-  const now=new Date(Date.now()+offset);
-  const h=now.getHours(),m=twoDigit(now.getMinutes()),s=twoDigit(now.getSeconds());
-  let ampm="",displayHour=h;
-  if(h===0){ampm="午前";displayHour=12;}
-  else if(h===12){ampm="午後";displayHour=12;}
-  else if(h>12){ampm="午後";displayHour=h-12;}
-  else{ampm="午前";}
-
-  const realtime=document.getElementById("realtime");
-  const analog=document.getElementById("analog-canvas");
-  if(isAnalog){
-    realtime.style.display="none";
-    analog.style.display="inline";
-    drawAnalogClock(now);
-  }else{
-    realtime.style.display="block";
-    analog.style.display="none";
-    realtime.textContent=`${displayHour}:${m}:${s}`;
+// ダークモード対応: prefers-color-scheme で文字色切替
+function applyDarkMode() {
+  if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.body.style.color = "#fff";
+  } else {
+    document.body.style.color = "#333";
   }
-  document.getElementById("ampm-display").textContent=ampm;
-  const weekdays=["日","月","火","水","木","金","土"];
-  document.getElementById("date-display").textContent=
-    `${now.getMonth()+1}月${now.getDate()}日(${weekdays[now.getDay()]})`;
-  document.title=`時計 - ${twoDigit(h)}:${m}:${s}`;
-  drawAnalogFavicon(now);
 }
+applyDarkMode();
+window.matchMedia('(prefers-color-scheme: dark)')
+      .addEventListener('change', applyDarkMode);
 
-function drawAnalogClock(date){
-  const canvas=document.getElementById("analog-canvas");
-  const ctx=canvas.getContext("2d");
-  ctx.clearRect(0,0,200,200);
-  const cx=100,cy=100,r=80;
-
-  ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);
-  ctx.fillStyle="#333";ctx.fill();
-  ctx.strokeStyle="#fff";ctx.stroke();
-
-  for(let i=0;i<12;i++){
-    const ang=i*Math.PI/6;
-    const x=cx+Math.sin(ang)*r*0.85;
-    const y=cy-Math.cos(ang)*r*0.85;
-    ctx.beginPath();ctx.arc(x,y,3,0,2*Math.PI);
-    ctx.fillStyle="#fff";ctx.fill();
-  }
-  const h=(date.getHours()%12)+date.getMinutes()/60;
-  const m=date.getMinutes()+date.getSeconds()/60;
-  const s=date.getSeconds();
-
-  ctx.strokeStyle="#fff";ctx.lineWidth=5;
-  ctx.beginPath();ctx.moveTo(cx,cy);
-  ctx.lineTo(cx+Math.sin(h*Math.PI/6)*r*0.5, cy-Math.cos(h*Math.PI/6)*r*0.5);ctx.stroke();
-
-  ctx.lineWidth=3;
-  ctx.beginPath();ctx.moveTo(cx,cy);
-  ctx.lineTo(cx+Math.sin(m*Math.PI/30)*r*0.7, cy-Math.cos(m*Math.PI/30)*r*0.7);ctx.stroke();
-
-  ctx.strokeStyle="red";ctx.lineWidth=2;
-  ctx.beginPath();ctx.moveTo(cx,cy);
-  ctx.lineTo(cx+Math.sin(s*Math.PI/30)*r*0.8, cy-Math.cos(s*Math.PI/30)*r*0.8);ctx.stroke();
-}
-
-document.getElementById("toggle-mode").onclick=()=>{
-  isAnalog=!isAnalog;
-  document.getElementById("toggle-mode").textContent=isAnalog?"デジタルに変更":"アナログに変更";
-};
-
-document.getElementById("font-select").onchange=(e)=>{
-  document.documentElement.style.fontFamily=e.target.value;
-  setCookie("fonts",e.target.value);
-};
-
-const savedFont=getCookie("fonts");
-if(savedFont){
-  document.getElementById("font-select").value=savedFont;
-  document.documentElement.style.fontFamily=savedFont;
-}
-
-document.getElementById("toggle-dark").onclick=()=>{
-  document.body.classList.toggle("dark");
-  setCookie("dark",document.body.classList.contains("dark"));
-};
-if(getCookie("dark")==="true")document.body.classList.add("dark");
-
-setInterval(showClock,1000);
-showClock();
+requestAnimationFrame(updateClock);
