@@ -6,20 +6,42 @@
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic&display=swap" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic&family=Orbitron:wght@500&family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
   <link id="dynamic-favicon" rel="icon" href="">
   <style>
     html {
       font-family: "Zen Maru Gothic", sans-serif;
+      transition: background-color 1s, color 1s;
     }
+    body.dark {
+      background-color: #222;
+      color: #fff;
+    }
+    #clock-container { text-align:center; margin-top:50px; }
+    #controls { margin-top:20px; }
+    select, button { margin:5px; }
+    canvas { display:none; }
   </style>
 </head>
 <body>
   <div id="clock-container">
     <p id="realtime"></p>
+    <canvas id="analog-canvas" width="200" height="200"></canvas>
     <div id="info-bottom">
       <p id="date-display"></p>
       <p id="ampm-display"></p>
+    </div>
+    <div id="controls">
+      <button id="toggle-mode">アナログに変更</button>
+      <label>フォント選択:
+        <select id="font-select">
+          <option value='"Zen Maru Gothic", sans-serif'>Zen Maru Gothic</option>
+          <option value='"Orbitron", sans-serif'>7/14セグ風</option>
+          <option value='"Comic Neue", cursive'>Comic Sans風</option>
+        </select>
+      </label>
+      <button id="toggle-dark">ダークモード切替</button>
     </div>
   </div>
   <script src="script.js"></script>
