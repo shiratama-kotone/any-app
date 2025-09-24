@@ -1,10 +1,10 @@
 var realtime = document.getElementById("realtime");
 var dateDisplay = document.getElementById("date-display");
 var ampmDisplay = document.getElementById("ampm-display");
-var fontSelector = document.getElementById("font-selector");
-var analogCanvas = document.getElementById("analog-clock");
+var fontSelector = document.getElementById("font-select"); // ←変更
+var analogCanvas = document.getElementById("analog-canvas"); // ←変更
 var ctx = analogCanvas.getContext("2d");
-var modeToggle = document.getElementById("mode-toggle");
+var modeToggle = document.getElementById("toggle-mode"); // ←変更
 
 var analogMode = false;
 
