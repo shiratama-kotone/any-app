@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unicode文字シフター</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 1.1em;
+        }
+
+        textarea, input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        textarea:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: rgba(255, 255, 255, 1);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .output-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .copy-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .copy-btn:active {
+            transform: translateY(0);
+        }
+
+        .copy-btn.copied {
+            background: linear-gradient(45deg, #48bb78, #38a169);
+            animation: pulse 0.6s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .info {
+            background: linear-gradient(135deg, #e6fffa, #b2f5ea);
+            border: 2px solid #4fd1c7;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            font-size: 14px;
+            color: #2d3748;
+        }
+
+        .process-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .process-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .process-btn:active {
+            transform: translateY(0);
+        }
+
+        .unicode-info {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin-top: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Unicode文字シフター</h1>
+        
+        <div class="info">
+            📝 入力した文字のUnicodeコードポイントを10増やして変換します。例：'A'（U+0041）→ 'K'（U+004B）
+        </div>
+
+        <div class="input-group">
+            <label for="inputText">変換する文字列を入力：</label>
+            <textarea id="inputText" placeholder="ここに文字列を入力してください..."></textarea>
+        </div>
+
+        <button class="process-btn" onclick="processText()">🔄 変換実行</button>
+
+        <div class="input-group">
+            <label>変換結果：</label>
+            <div class="output-container">
+                <textarea id="outputText" readonly placeholder="変換結果がここに表示されます..."></textarea>
+                <button class="copy-btn" onclick="copyToClipboard('outputText', this)">📋 コピー</button>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>Unicode詳細情報：</label>
+            <div class="output-container">
+                <textarea id="unicodeInfo" readonly placeholder="Unicode情報がここに表示されます..."></textarea>
+                <button class="copy-btn" onclick="copyToClipboard('unicodeInfo', this)">📋 コピー</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function processText() {
+            const input = document.getElementById('inputText').value;
+            const outputElement = document.getElementById('outputText');
+            const unicodeInfoElement = document.getElementById('unicodeInfo');
+            
+            if (!input) {
+                outputElement.value = '';
+                unicodeInfoElement.value = '';
+                return;
+            }
+
+            let result = '';
+            let unicodeDetails = '';
+            
+            for (let i = 0; i < input.length; i++) {
+                const char = input[i];
+                const originalCode = char.codePointAt(0);
+                const shiftedCode = originalCode + 10;
+                
+                // 最大Unicode値を超えないようにクランプ（0x10FFFF）
+                const finalCode = Math.min(0x10FFFF, shiftedCode);
+                const shiftedChar = String.fromCodePoint(finalCode);
+                
+                result += shiftedChar;
+                
+                // Unicode詳細情報を追加
+                unicodeDetails += `'${char}' (U+${originalCode.toString(16).toUpperCase().padStart(4, '0')}) → `;
+                unicodeDetails += `'${shiftedChar}' (U+${finalCode.toString(16).toUpperCase().padStart(4, '0')})`;
+                
+                if (originalCode !== shiftedCode && finalCode === 0x10FFFF) {
+                    unicodeDetails += ' [クランプされました]';
+                }
+                
+                unicodeDetails += '\n';
+            }
+            
+            outputElement.value = result;
+            unicodeInfoElement.value = unicodeDetails.trim();
+        }
+
+        function copyToClipboard(elementId, button) {
+            const element = document.getElementById(elementId);
+            const text = element.value;
+            
+            if (!text) {
+                return;
+            }
+
+            navigator.clipboard.writeText(text).then(function() {
+                // ボタンのテキストと色を一時的に変更
+                const originalText = button.textContent;
+                button.textContent = '✅ コピー完了！';
+                button.classList.add('copied');
+                
+                setTimeout(function() {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            }).catch(function(err) {
+                console.error('コピーに失敗しました: ', err);
+                alert('コピーに失敗しました。手動でテキストを選択してコピーしてください。');
+            });
+        }
+
+        // エンターキーでの変換実行（Ctrl+Enterの場合のみ）
+        document.getElementById('inputText').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                processText();
+            }
+        });
+
+        // リアルタイム変換（オプション）
+        document.getElementById('inputText').addEventListener('input', function() {
+            processText();
+        });
+    </script>
+</body>
+</html>
