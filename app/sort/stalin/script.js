@@ -1,4 +1,4 @@
-/* script.js 完全版 */
+/* script.js 完全修正版 */
 
 (function(){
 var inputArea = document.getElementById('inputArray');
@@ -18,13 +18,15 @@ function parseInput(text){
 var items = text.trim().split(/[\t,\s\n\r]+/);
 var nums = [];
 for(var i=0;i<items.length;i++){
-var n = Number(items[i]);
+var s = items[i].replace(/,/g,'').trim();
+if(s==='') continue;
+var n = Number(s);
 if(!isNaN(n)) nums.push(n);
 }
 return nums;
 }
 
-function clearChart(){ chart.innerHTML = ''; }
+function clearChart(){ chart.innerHTML=''; }
 
 function renderBars(arr){
 clearChart();
@@ -32,14 +34,14 @@ if(arr.length===0){
 chart.innerHTML='<div style="opacity:0.6">配列が空です</div>';
 return;
 }
-var max = Math.max.apply(null, arr.map(Math.abs));
+var max=Math.max.apply(null, arr.map(Math.abs));
 if(max===0) max=1;
 arr.forEach(v=>{
 var bar=document.createElement('div');
 bar.className='bar';
 bar.dataset.value=String(v);
 var h=Math.abs(v)/max*100;
-if(h<4)h=4;
+if(h<4) h=4;
 bar.style.height=h+'%';
 var label=document.createElement('span');
 label.textContent=v;
@@ -66,8 +68,9 @@ while(true){
   var bar=bars[i];
   bar.style.transform='translateY(-4px) scale(1.01)';
   await sleep(delay/3);
+
   var val=Number(bar.dataset.value);
-  var cmp=ascending?(val>=lastValue):(val<=lastValue);
+  var cmp=ascending ? (val>=lastValue) : (val<=lastValue);
 
   if(cmp){
     bar.classList.add('keep');
@@ -85,7 +88,6 @@ while(true){
   chart.querySelectorAll('.bar').forEach(b=>b.style.transform='');
 }
 
-// 完了アニメ
 var finalBars=chart.querySelectorAll('.bar.keep');
 for(var j=0;j<finalBars.length;j++){
   finalBars[j].style.transform='translateY(-10px) scale(1.03)';
@@ -99,13 +101,13 @@ startBtn.disabled=false; renderBtn.disabled=false; resetBtn.disabled=false;
 }
 
 renderBtn.addEventListener('click',()=>{
-if(isSorting)return;
+if(isSorting) return;
 originalArray=parseInput(inputArea.value);
 renderBars(originalArray);
 });
 
 startBtn.addEventListener('click',()=>{
-if(isSorting)return;
+if(isSorting) return;
 if(!chart.querySelectorAll('.bar').length){
 originalArray=parseInput(inputArea.value);
 renderBars(originalArray);
@@ -114,11 +116,10 @@ stalinSortAnimate(ascCheckbox.checked, Number(speedSlider.value));
 });
 
 resetBtn.addEventListener('click',()=>{
-if(isSorting)return;
+if(isSorting) return;
 renderBars(originalArray);
 });
 
-// 初期
 inputArea.value='3,1,4,1,5,9,2,6,5';
 renderBtn.click();
 })();
