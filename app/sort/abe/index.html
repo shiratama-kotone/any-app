@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abeソート ビジュアライザー</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: monospace;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #f5576c;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .speed-control input {
+            flex: 1;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #f5576c;
+        }
+
+        .max-indicator {
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 18px;
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 5px;
+            overflow-x: auto;
+        }
+
+        .bar {
+            flex: 1;
+            min-width: 20px;
+            max-width: 60px;
+            background: linear-gradient(180deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 5px 5px 0 0;
+            position: relative;
+            transition: height 0.6s ease, background 0.6s ease;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            padding-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .bar.growing {
+            background: linear-gradient(180deg, #ffd93d 0%, #ff6b6b 100%);
+            animation: pulse 0.6s ease;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .bar.max {
+            background: linear-gradient(180deg, #51cf66 0%, #37b24d 100%);
+        }
+
+        .message {
+            text-align: center;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .message.success {
+            background: #d3f9d8;
+            color: #2b8a3e;
+        }
+
+        .message.info {
+            background: #e7f5ff;
+            color: #1971c2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📈 Abeソート</h1>
+        <p class="subtitle">最大値より小さい値は最大値に書き換え！</p>
+
+        <div class="input-section">
+            <label for="dataInput">データ入力(カンマ、スペース、改行区切り):</label>
+            <textarea id="dataInput" rows="4" placeholder="例: 5, 2, 8, 1, 9, 3, 7&#10;または&#10;5&#10;2&#10;8&#10;1&#10;9">3, 1, 4, 1, 5, 9, 2, 6, 5, 3</textarea>
+        </div>
+
+        <div class="speed-control">
+            <label>速度:</label>
+            <input type="range" id="speedSlider" min="100" max="2000" value="600" step="100">
+            <span id="speedValue">0.6秒</span>
+        </div>
+
+        <div class="controls">
+            <button class="btn-primary" onclick="startSort()">ソート開始</button>
+            <button class="btn-secondary" onclick="resetChart()">リセット</button>
+        </div>
+
+        <div id="maxIndicator" class="max-indicator"></div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-label">要素数</div>
+                <div class="stat-value" id="arraySize">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">現在の最大値</div>
+                <div class="stat-value" id="currentMax">-</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">書き換え回数</div>
+                <div class="stat-value" id="replaceCount">0</div>
+            </div>
+        </div>
+
+        <div class="chart-container" id="chartContainer"></div>
+
+        <div id="message"></div>
+    </div>
+
+    <script>
+        let data = [];
+        let originalData = [];
+        let animationSpeed = 600;
+        let isAnimating = false;
+
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValue = document.getElementById('speedValue');
+
+        speedSlider.addEventListener('input', (e) => {
+            animationSpeed = parseInt(e.target.value);
+            speedValue.textContent = (animationSpeed / 1000).toFixed(1) + '秒';
+        });
+
+        function parseInput(input) {
+            return input
+                .split(/[\s,\n]+/)
+                .map(s => s.trim())
+                .filter(s => s !== '')
+                .map(s => parseFloat(s))
+                .filter(n => !isNaN(n));
+        }
+
+        function createChart(data) {
+            const container = document.getElementById('chartContainer');
+            container.innerHTML = '';
+
+            if (data.length === 0) return;
+
+            const maxValue = Math.max(...data);
+            
+            data.forEach((value, index) => {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.id = `bar-${index}`;
+                const heightPercent = (value / maxValue) * 100;
+                bar.style.height = `${heightPercent}%`;
+                bar.textContent = value;
+                container.appendChild(bar);
+            });
+        }
+
+        function updateBar(index, value, maxValue) {
+            const bar = document.getElementById(`bar-${index}`);
+            if (!bar) return;
+
+            const heightPercent = (value / maxValue) * 100;
+            bar.style.height = `${heightPercent}%`;
+            bar.textContent = value;
+        }
+
+        function updateStats(replaceCount) {
+            document.getElementById('arraySize').textContent = data.length;
+            document.getElementById('currentMax').textContent = Math.max(...data);
+            document.getElementById('replaceCount').textContent = replaceCount;
+        }
+
+        function updateMaxIndicator(max) {
+            const indicator = document.getElementById('maxIndicator');
+            indicator.textContent = `現在の最大値: ${max}`;
+        }
+
+        function showMessage(text, type = 'info') {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+        }
+
+        async function abeSort() {
+            if (data.length === 0) return;
+
+            showMessage('ソート開始...', 'info');
+            isAnimating = true;
+
+            let replaceCount = 0;
+            let currentMax = data[0];
+            
+            // 最初の要素をハイライト
+            const firstBar = document.getElementById('bar-0');
+            if (firstBar) {
+                firstBar.classList.add('max');
+            }
+            updateMaxIndicator(currentMax);
+            updateStats(replaceCount);
+            
+            await sleep(animationSpeed);
+
+            const maxValueForChart = Math.max(...data);
+
+            for (let i = 1; i < data.length; i++) {
+                const bar = document.getElementById(`bar-${i}`);
+                
+                if (data[i] > currentMax) {
+                    // 新しい最大値を発見
+                    // 以前の最大値バーのクラスを削除
+                    document.querySelectorAll('.bar.max').forEach(b => b.classList.remove('max'));
+                    
+                    currentMax = data[i];
+                    if (bar) {
+                        bar.classList.add('max');
+                    }
+                    updateMaxIndicator(currentMax);
+                    showMessage(`新しい最大値: ${currentMax}`, 'info');
+                } else if (data[i] < currentMax) {
+                    // 最大値より小さいので書き換え
+                    const oldValue = data[i];
+                    data[i] = currentMax;
+                    replaceCount++;
+                    
+                    if (bar) {
+                        bar.classList.add('growing');
+                    }
+                    
+                    updateBar(i, currentMax, maxValueForChart);
+                    updateStats(replaceCount);
+                    showMessage(`${oldValue} を ${currentMax} に書き換え`, 'info');
+                    
+                    await sleep(animationSpeed);
+                    
+                    if (bar) {
+                        bar.classList.remove('growing');
+                    }
+                } else {
+                    // 最大値と同じ
+                    showMessage(`${data[i]} は最大値と同じなのでそのまま`, 'info');
+                }
+                
+                await sleep(animationSpeed / 2);
+            }
+
+            showMessage(`完了！${replaceCount}個の要素を書き換えました`, 'success');
+            isAnimating = false;
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function startSort() {
+            if (isAnimating) return;
+
+            const input = document.getElementById('dataInput').value;
+            data = parseInput(input);
+            
+            if (data.length === 0) {
+                showMessage('有効なデータを入力してください', 'info');
+                return;
+            }
+
+            originalData = [...data];
+            createChart(data);
+            updateStats(0);
+            updateMaxIndicator('-');
+            abeSort();
+        }
+
+        function resetChart() {
+            if (isAnimating) return;
+
+            const input = document.getElementById('dataInput').value;
+            data = parseInput(input);
+            originalData = [...data];
+            createChart(data);
+            updateStats(0);
+            updateMaxIndicator('-');
+            document.getElementById('message').textContent = '';
+        }
+
+        // 初期表示
+        resetChart();
+    </script>
+</body>
+</html>
