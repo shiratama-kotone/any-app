@@ -1,64 +1,405 @@
 <!DOCTYPE html>
-
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>スターリンソート可視化</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="icon" href="https://cdn.glitch.global/b063afd9-f3c5-4a81-a445-da854de0fa7a/yuyuyu-new-visual.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スターリンソート ビジュアライザー</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: monospace;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .speed-control input {
+            flex: 1;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 5px;
+            overflow-x: auto;
+        }
+
+        .bar {
+            flex: 1;
+            min-width: 20px;
+            max-width: 60px;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            border-radius: 5px 5px 0 0;
+            position: relative;
+            transition: all 0.5s ease;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            padding-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .bar.removing {
+            background: linear-gradient(180deg, #ff6b6b 0%, #ee5a6f 100%);
+            animation: removeBar 0.5s ease;
+        }
+
+        @keyframes removeBar {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.1) rotate(5deg);
+            }
+            100% {
+                transform: scale(0) rotate(10deg);
+                opacity: 0;
+            }
+        }
+
+        .bar.kept {
+            background: linear-gradient(180deg, #51cf66 0%, #37b24d 100%);
+        }
+
+        .message {
+            text-align: center;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .message.success {
+            background: #d3f9d8;
+            color: #2b8a3e;
+        }
+
+        .message.info {
+            background: #e7f5ff;
+            color: #1971c2;
+        }
+    </style>
 </head>
 <body>
-  <div id="header"></div>
+    <div class="container">
+        <h1>🗡️ スターリンソート</h1>
+        <p class="subtitle">昇順でない要素は容赦なく削除！</p>
 
-  <div class="content">
-    <h1>スターリンソート（Stalin Sort）可視化</h1>
+        <div class="input-section">
+            <label for="dataInput">データ入力(カンマ、スペース、改行区切り):</label>
+            <textarea id="dataInput" rows="4" placeholder="例: 5, 2, 8, 1, 9, 3, 7&#10;または&#10;5&#10;2&#10;8&#10;1&#10;9">5, 2, 8, 1, 9, 3, 7, 4, 10, 6</textarea>
+        </div>
 
-```
-<section class="controls">
-  <label>
-    配列を貼り付け（カンマ / スペース / 改行 / スプレッドシート列 いずれもOK）：
-    <textarea id="inputArray" placeholder="例: 3, 1, 4, 1, 5, 9"></textarea>
-  </label>
+        <div class="speed-control">
+            <label>速度:</label>
+            <input type="range" id="speedSlider" min="100" max="2000" value="800" step="100">
+            <span id="speedValue">0.8秒</span>
+        </div>
 
-  <div class="row">
-    <button id="renderBtn">表示</button>
-    <button id="startBtn">ソート開始</button>
-    <button id="resetBtn">リセット</button>
+        <div class="controls">
+            <button class="btn-primary" onclick="startSort()">ソート開始</button>
+            <button class="btn-secondary" onclick="resetChart()">リセット</button>
+        </div>
 
-    <label class="small">
-      アニメ速度
-      <input id="speed" type="range" min="50" max="1500" value="400">
-    </label>
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-label">元のサイズ</div>
+                <div class="stat-value" id="originalSize">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">残った要素</div>
+                <div class="stat-value" id="remainingSize">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">削除された要素</div>
+                <div class="stat-value" id="removedCount">0</div>
+            </div>
+        </div>
 
-    <label class="small">
-      昇順
-      <input id="ascCheckbox" type="checkbox" checked>
-    </label>
-  </div>
+        <div class="chart-container" id="chartContainer"></div>
 
-  <p class="hint">スプレッドシートから列ごとコピーしてそのままペーストしてOK。数値以外は無視されるよ。</p>
-</section>
+        <div id="message"></div>
+    </div>
 
-<section class="chart-wrap">
-  <div id="chart" class="chart"></div>
-</section>
+    <script>
+        let data = [];
+        let originalData = [];
+        let animationSpeed = 800;
+        let isAnimating = false;
 
-<section class="legend">
-  <div class="legend-item"><span class="bar sample"></span> 通常要素</div>
-  <div class="legend-item"><span class="bar sample keep"></span> 残す要素</div>
-  <div class="legend-item"><span class="bar sample remove"></span> 削除される要素</div>
-</section>
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValue = document.getElementById('speedValue');
 
-<footer>
-  <small>作成: ゆゆゆ風スターリンソート可視化</small>
-</footer>
+        speedSlider.addEventListener('input', (e) => {
+            animationSpeed = parseInt(e.target.value);
+            speedValue.textContent = (animationSpeed / 1000).toFixed(1) + '秒';
+        });
 
-  </div>
+        function parseInput(input) {
+            return input
+                .split(/[\s,\n]+/)
+                .map(s => s.trim())
+                .filter(s => s !== '')
+                .map(s => parseFloat(s))
+                .filter(n => !isNaN(n));
+        }
 
-  <div id="footer"></div>
+        function createChart(data) {
+            const container = document.getElementById('chartContainer');
+            container.innerHTML = '';
 
-  <script src="script.js"></script>
+            if (data.length === 0) return;
 
+            const maxValue = Math.max(...data);
+            
+            data.forEach((value, index) => {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.id = `bar-${index}`;
+                const heightPercent = (value / maxValue) * 100;
+                bar.style.height = `${heightPercent}%`;
+                bar.textContent = value;
+                container.appendChild(bar);
+            });
+        }
+
+        function updateStats() {
+            document.getElementById('originalSize').textContent = originalData.length;
+            document.getElementById('remainingSize').textContent = data.length;
+            document.getElementById('removedCount').textContent = originalData.length - data.length;
+        }
+
+        function showMessage(text, type = 'info') {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+        }
+
+        async function stalinSort() {
+            if (data.length === 0) return;
+
+            showMessage('ソート開始...', 'info');
+            isAnimating = true;
+
+            const result = [data[0]];
+            const originalLength = data.length;
+            
+            // 最初の要素は常に残る
+            const firstBar = document.getElementById('bar-0');
+            if (firstBar) {
+                firstBar.classList.add('kept');
+            }
+            
+            await sleep(animationSpeed);
+
+            for (let i = 1; i < originalLength; i++) {
+                const bar = document.getElementById(`bar-${i}`);
+                
+                if (data[i] >= result[result.length - 1]) {
+                    // 要素を保持
+                    result.push(data[i]);
+                    if (bar) {
+                        bar.classList.add('kept');
+                    }
+                    showMessage(`${data[i]} は保持されました (${result[result.length - 2]} <= ${data[i]})`, 'info');
+                } else {
+                    // 要素を削除
+                    if (bar) {
+                        bar.classList.add('removing');
+                    }
+                    showMessage(`${data[i]} は削除されました (${data[i]} < ${result[result.length - 1]})`, 'info');
+                    await sleep(animationSpeed);
+                    if (bar) {
+                        bar.remove();
+                    }
+                }
+                
+                updateStats();
+                await sleep(animationSpeed);
+            }
+
+            data = [...result];
+            showMessage(`完了！ ${result.length}個の要素が残りました`, 'success');
+            isAnimating = false;
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function startSort() {
+            if (isAnimating) return;
+
+            const input = document.getElementById('dataInput').value;
+            data = parseInput(input);
+            
+            if (data.length === 0) {
+                showMessage('有効なデータを入力してください', 'info');
+                return;
+            }
+
+            originalData = [...data];
+            createChart(data);
+            updateStats();
+            stalinSort();
+        }
+
+        function resetChart() {
+            if (isAnimating) return;
+
+            const input = document.getElementById('dataInput').value;
+            data = parseInput(input);
+            originalData = [...data];
+            createChart(data);
+            updateStats();
+            document.getElementById('message').textContent = '';
+        }
+
+        // 初期表示
+        resetChart();
+    </script>
 </body>
 </html>
