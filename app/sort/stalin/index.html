@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>スターリンソート可視化</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="https://cdn.glitch.global/b063afd9-f3c5-4a81-a445-da854de0fa7a/yuyuyu-new-visual.png">
+</head>
+<body>
+  <div id="header"></div>
+
+  <div class="content">
+    <h1>スターリンソート（Stalin Sort）可視化</h1>
+
+```
+<section class="controls">
+  <label>
+    配列を貼り付け（カンマ / スペース / 改行 / スプレッドシート列 いずれもOK）：
+    <textarea id="inputArray" placeholder="例: 3, 1, 4, 1, 5, 9"></textarea>
+  </label>
+
+  <div class="row">
+    <button id="renderBtn">表示</button>
+    <button id="startBtn">ソート開始</button>
+    <button id="resetBtn">リセット</button>
+
+    <label class="small">
+      アニメ速度
+      <input id="speed" type="range" min="50" max="1500" value="400">
+    </label>
+
+    <label class="small">
+      昇順
+      <input id="ascCheckbox" type="checkbox" checked>
+    </label>
+  </div>
+
+  <p class="hint">スプレッドシートから列ごとコピーしてそのままペーストしてOK。数値以外は無視されるよ。</p>
+</section>
+
+<section class="chart-wrap">
+  <div id="chart" class="chart"></div>
+</section>
+
+<section class="legend">
+  <div class="legend-item"><span class="bar sample"></span> 通常要素</div>
+  <div class="legend-item"><span class="bar sample keep"></span> 残す要素</div>
+  <div class="legend-item"><span class="bar sample remove"></span> 削除される要素</div>
+</section>
+
+<footer>
+  <small>作成: ゆゆゆ風スターリンソート可視化</small>
+</footer>
+
+  </div>
+
+  <div id="footer"></div>
+
+  <script src="script.js"></script>
+
+</body>
+</html>
