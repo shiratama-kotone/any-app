@@ -1,0 +1,10 @@
+body { font-family: sans-serif; background: #f9f9f9; margin: 0; padding: 20px; }
+    h2 { margin-top: 0; }
+    #rooms { margin-bottom: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; background: #fff; }
+    .room { padding: 6px; border-bottom: 1px solid #eee; cursor: pointer; }
+    .room:hover { background: #f0f0f0; }
+    .unread { font-weight: bold; color: red; margin-left: 5px; }
+    #messages { height: 300px; overflow-y: auto; background: #fff; padding: 10px; border: 1px solid #ccc; }
+    #send { display: flex; margin-top: 10px; }
+    #msgInput { flex: 1; padding: 6px; }
+    button { padding: 6px 10px; margin-left: 5px; }
