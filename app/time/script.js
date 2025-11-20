@@ -148,3 +148,75 @@ function drawAnalog(h, m, s, ms) {
 }
 
 requestAnimationFrame(updateClock);
+
+
+function updateFaviconClock() {
+  var canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 64;
+  var ctx = canvas.getContext("2d");
+
+  var now = new Date();
+  var sec = now.getSeconds();
+  var min = now.getMinutes();
+  var hour = now.getHours() % 12;
+
+  // 背景
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, 64, 64);
+
+  // 枠のみ
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(32, 32, 28, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 短針
+  var hourAng = (hour + min / 60) * (Math.PI * 2 / 12);
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(32, 32);
+  ctx.lineTo(
+    32 + Math.sin(hourAng) * 15,
+    32 - Math.cos(hourAng) * 15
+  );
+  ctx.stroke();
+
+  // 長針
+  var minAng = (min + sec / 60) * (Math.PI * 2 / 60);
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(32, 32);
+  ctx.lineTo(
+    32 + Math.sin(minAng) * 22,
+    32 - Math.cos(minAng) * 22
+  );
+  ctx.stroke();
+
+  // 秒針
+  var secAng = sec * (Math.PI * 2 / 60);
+  ctx.strokeStyle = "#d00";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(32, 32);
+  ctx.lineTo(
+    32 + Math.sin(secAng) * 24,
+    32 - Math.cos(secAng) * 24
+  );
+  ctx.stroke();
+
+  // ファビコン差し替え
+  var url = canvas.toDataURL("image/png");
+  var link = document.querySelector("link[rel='icon']");
+  if (!link) {
+    link = document.createElement("link");
+    link.rel = "icon";
+    document.head.appendChild(link);
+  }
+  link.href = url;
+}
+
+setInterval(updateFaviconClock, 1000);
+updateFaviconClock();
