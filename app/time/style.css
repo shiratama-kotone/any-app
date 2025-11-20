@@ -1,81 +1,69 @@
 body {
-    background-color: #f8f8f8;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    margin: 0;
-    font-family: sans-serif;
-    overflow: hidden; /* スクロールバーが出ないように */
-    padding: 10px; /* 画面端に近すぎないように少しパディング */
-    box-sizing: border-box; /* パディングを幅に含める */
+  background-color: #f8f8f8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  margin: 0;
+  font-family: sans-serif;
+  overflow: hidden;
+  padding: 10px;
+  box-sizing: border-box;
+
+  /* ダークモードのフェードイン */
+  transition: background-color 0.8s ease, color 0.8s ease;
 }
 
-/* 時計全体を囲むコンテナ */
+body.dark {
+  background-color: #222;
+  color: #fff;
+}
+
+/* 時計コンテナ */
 #clock-container {
-    display: flex;
-    flex-direction: column; /* 縦方向に要素を並べる */
-    align-items: center; /* 水平方向の中央揃え */
-    justify-content: center; /* 垂直方向の中央揃え (flex-direction: column の場合) */
-    width: 100%; /* 親要素の幅に合わせる */
-    max-width: 90vw; /* 画面幅の90%を超えないように（はみ出し防止） */
-    text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 90vw;
+  text-align: center;
 }
 
 #realtime {
-    /* 画面の幅と高さの小さい方に合わせてフォントサイズを調整し、はみ出しを防ぐ */
-    font-size: min(40vh, 20vw);
-    color: #333;
-    font-weight: bold;
-    user-select: none;
-    line-height: 1;
-    padding: 0;
-    margin: 0;
-    white-space: nowrap; /* 数字が改行されないように */
+  font-size: min(40vh, 20vw);
+  color: #333;
+  font-weight: bold;
+  user-select: none;
+  line-height: 1;
+  margin: 0;
+  white-space: nowrap;
 }
 
-/* 日付と午前/午後を格納するコンテナ */
 #info-bottom {
-    display: flex;
-    justify-content: space-between; /* 左右に要素を広げる */
-    align-items: flex-end; /* 下揃え */
-    width: 100%; /* 時計の幅に合わせる */
-    margin-top: 1vh; /* 時計の数字との間に少し余白 */
-    padding: 0 2vw; /* 左右に少しパディングを入れて端に寄りすぎないように */
-    box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  width: 100%;
+  margin-top: 1vh;
+  padding: 0 2vw;
+  box-sizing: border-box;
 }
 
 #date-display,
 #ampm-display {
-    /* フォントサイズを画面の幅と高さの小さい方に合わせて調整 */
-    font-size: min(6vh, 3vw);
-    color: #666;
-    white-space: nowrap; /* テキストが改行されないように */
-    margin: 0;
-    padding: 0;
-    line-height: 1;
+  font-size: min(6vh, 3vw);
+  color: #666;
+  white-space: nowrap;
+  margin: 0;
+  line-height: 1;
 }
 
-/* スマートフォンでの調整 */
-@media (max-width: 768px) {
-    #realtime {
-        font-size: min(25vh, 40vw); /* スマホ縦画面でさらに小さく */
-    }
-    #info-bottom {
-        flex-direction: row; /* 横並びを維持 */
-        margin-top: 0.5vh;
-        padding: 0 1vw;
-    }
-    #date-display,
-
-
-
-
-    /* アナログ時計のサイズとレスポンシブ対応 */
+/* アナログ時計 */
 #analog-canvas {
   display: none;
-  width: min(80vw,80vh);
-  height: min(80vw,80vh);
+  width: min(80vw, 80vh);
+  height: min(80vw, 80vh);
   max-width: 600px;
   max-height: 600px;
 }
@@ -90,9 +78,21 @@ body {
   align-items: center;
 }
 
-#font-wrapper.hidden { display: none; }
+/* フォント選択を非表示にするクラス */
+#font-wrapper.hidden {
+  display: none;
+}
 
-    #ampm-display {
-        font-size: min(4vh, 6vw); /* スマホでさらに小さく */
-    }
+/* スマホ対応 */
+@media (max-width: 768px) {
+  #realtime {
+    font-size: min(25vh, 40vw);
+  }
+  #info-bottom {
+    margin-top: 0.5vh;
+    padding: 0 1vw;
+  }
+  #ampm-display {
+    font-size: min(4vh, 6vw);
+  }
 }
