@@ -11,12 +11,17 @@ var analogMode = false;
 
 // フォント切替
 fontSelector.addEventListener("change", function () {
-  realtime.style.fontFamily = fontSelector.value;
-  dateDisplay.style.fontFamily = fontSelector.value;
-  ampmDisplay.style.fontFamily = fontSelector.value;
+  var v = fontSelector.value;
+  if (v === "default") {
+    v = fontSelector.options[1].value; // 最初のフォント
+  }
+
+  realtime.style.fontFamily = v;
+  dateDisplay.style.fontFamily = v;
+  ampmDisplay.style.fontFamily = v;
 });
 
-// モード切替（デジタル ↔ アナログ）
+// モード切替
 modeToggle.addEventListener("click", function () {
   analogMode = !analogMode;
 
@@ -24,24 +29,18 @@ modeToggle.addEventListener("click", function () {
     realtime.style.display = "none";
     document.getElementById("info-bottom").style.display = "none";
     analogCanvas.style.display = "block";
-
-    // フォント選択を丸ごと非表示
     document.getElementById("font-wrapper").classList.add("hidden");
-
     modeToggle.textContent = "デジタルに変更";
   } else {
     realtime.style.display = "block";
     document.getElementById("info-bottom").style.display = "flex";
     analogCanvas.style.display = "none";
-
-    // フォント選択復活
     document.getElementById("font-wrapper").classList.remove("hidden");
-
     modeToggle.textContent = "アナログに変更";
   }
 });
 
-// ダークモード切替（フェード付き）
+// ダークモード
 darkToggle.addEventListener("click", function () {
   document.body.classList.toggle("dark");
 });
@@ -73,11 +72,14 @@ function updateClock() {
     ampmDisplay.textContent = ampm;
   }
 
+  // サイトタイトル更新
+  document.title = "時計 - " + timeStr;
+
   drawAnalog(h, m, s, ms);
   requestAnimationFrame(updateClock);
 }
 
-// アナログ時計描画
+// アナログ時計
 function drawAnalog(h, m, s, ms) {
   if (!analogMode) return;
 
@@ -96,19 +98,20 @@ function drawAnalog(h, m, s, ms) {
   ctx.lineWidth = 4;
   ctx.stroke();
 
-  // 目盛（ズレ修正済）
+  // 目盛
   ctx.save();
   ctx.rotate(0);
   for (var i = 0; i < 60; i++) {
     ctx.beginPath();
     ctx.moveTo(0, -r + 5);
     ctx.lineTo(0, -r + (i % 5 === 0 ? 15 : 10));
+    ctx.strokeStyle = getComputedStyle(document.body).color;
     ctx.stroke();
     ctx.rotate(Math.PI / 30);
   }
   ctx.restore();
 
-  // 時針・分針・秒針（スムーズ）
+  // 針
   var sec = (s + ms / 1000) * (Math.PI / 30);
   var min = (m + s / 60) * (Math.PI / 30);
   var hr = ((h % 12) + m / 60) * (Math.PI / 6);
@@ -150,6 +153,7 @@ function drawAnalog(h, m, s, ms) {
 requestAnimationFrame(updateClock);
 
 
+// ファビコン時計
 function updateFaviconClock() {
   var canvas = document.createElement("canvas");
   canvas.width = 64;
@@ -161,53 +165,38 @@ function updateFaviconClock() {
   var min = now.getMinutes();
   var hour = now.getHours() % 12;
 
-  // 背景
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, 64, 64);
 
-  // 枠のみ
   ctx.strokeStyle = "#000";
   ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.arc(32, 32, 28, 0, Math.PI * 2);
   ctx.stroke();
 
-  // 短針
   var hourAng = (hour + min / 60) * (Math.PI * 2 / 12);
   ctx.strokeStyle = "#000";
   ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.moveTo(32, 32);
-  ctx.lineTo(
-    32 + Math.sin(hourAng) * 15,
-    32 - Math.cos(hourAng) * 15
-  );
+  ctx.lineTo(32 + Math.sin(hourAng) * 15, 32 - Math.cos(hourAng) * 15);
   ctx.stroke();
 
-  // 長針
   var minAng = (min + sec / 60) * (Math.PI * 2 / 60);
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(32, 32);
-  ctx.lineTo(
-    32 + Math.sin(minAng) * 22,
-    32 - Math.cos(minAng) * 22
-  );
+  ctx.lineTo(32 + Math.sin(minAng) * 22, 32 - Math.cos(minAng) * 22);
   ctx.stroke();
 
-  // 秒針
   var secAng = sec * (Math.PI * 2 / 60);
   ctx.strokeStyle = "#d00";
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(32, 32);
-  ctx.lineTo(
-    32 + Math.sin(secAng) * 24,
-    32 - Math.cos(secAng) * 24
-  );
+  ctx.lineTo(32 + Math.sin(secAng) * 24, 32 - Math.cos(secAng) * 24);
   ctx.stroke();
 
-  // ファビコン差し替え
   var url = canvas.toDataURL("image/png");
   var link = document.querySelector("link[rel='icon']");
   if (!link) {
@@ -220,3 +209,4 @@ function updateFaviconClock() {
 
 setInterval(updateFaviconClock, 1000);
 updateFaviconClock();
+
