@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Unicode -10 変換</title>
+  <title>Unicode</title>
   <style>
     body {
       font-family: sans-serif;
@@ -11,36 +11,54 @@
     }
     textarea {
       width: 100%;
-      height: 80px;
+      height: 90px;
       margin-bottom: 10px;
+      font-size: 16px;
     }
     button {
-      padding: 8px 12px;
-      margin-right: 5px;
+      padding: 8px 14px;
+      font-size: 14px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
 
-<h2>Unicode -10 変換</h2>
+<h2>原文</h2>
+<textarea id="plain" placeholder="ここに入力"></textarea>
 
-<textarea id="input" placeholder="ここに文字を入力"></textarea>
-<button onclick="convert()">変換</button>
+<h2>変換結果</h2>
+<textarea id="encoded" placeholder="ここも直接入力できる"></textarea>
 
-<textarea id="output" placeholder="結果" readonly></textarea>
-<button onclick="copyText()">コピー</button>
+<button onclick="copyEncoded()">下をコピー</button>
 
 <script>
-function convert() {
-  var t = '';
-  for (c of input.value) {
-    t += String.fromCodePoint(c.codePointAt(0) - 10);
+var lock = false;
+
+function shiftText(text, n) {
+  var result = '';
+  for (var c of text) {
+    result += String.fromCodePoint(c.codePointAt(0) + n);
   }
-  output.value = t;
+  return result;
 }
 
-function copyText() {
-  output.select();
+plain.addEventListener('input', () => {
+  if (lock) return;
+  lock = true;
+  encoded.value = shiftText(plain.value, 10);
+  lock = false;
+});
+
+encoded.addEventListener('input', () => {
+  if (lock) return;
+  lock = true;
+  plain.value = shiftText(encoded.value, -10);
+  lock = false;
+});
+
+function copyEncoded() {
+  encoded.select();
   document.execCommand('copy');
 }
 </script>
