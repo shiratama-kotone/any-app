@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unicode -10 変換</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    textarea {
+      width: 100%;
+      height: 80px;
+      margin-bottom: 10px;
+    }
+    button {
+      padding: 8px 12px;
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Unicode -10 変換</h2>
+
+<textarea id="input" placeholder="ここに文字を入力"></textarea>
+<button onclick="convert()">変換</button>
+
+<textarea id="output" placeholder="結果" readonly></textarea>
+<button onclick="copyText()">コピー</button>
+
+<script>
+function convert() {
+  var t = '';
+  for (c of input.value) {
+    t += String.fromCodePoint(c.codePointAt(0) - 10);
+  }
+  output.value = t;
+}
+
+function copyText() {
+  output.select();
+  document.execCommand('copy');
+}
+</script>
+
+</body>
+</html>
