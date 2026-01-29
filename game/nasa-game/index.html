@@ -69,7 +69,7 @@ var rankArea = document.getElementById("rankArea");
 
 for(var i=1;i<=7;i++){
   var s = document.createElement("select");
-  s.dataset.rank = i;
+  s.dataset.last = "";
   s.onchange = swapCheck;
 
   var def = document.createElement("option");
@@ -77,36 +77,51 @@ for(var i=1;i<=7;i++){
   def.textContent = i+"位を選択";
   s.appendChild(def);
 
-  for(var j=0;j<items.length;j++){
-    var opt = document.createElement("option");
-    opt.value = items[j].text;
-    opt.innerHTML = items[j].html;
-    s.appendChild(opt);
-  }
+  items.forEach(function(it){
+    var o = document.createElement("option");
+    o.value = it.text;
+    o.innerHTML = it.html;
+    s.appendChild(o);
+  });
 
-  rankArea.appendChild(document.createTextNode(i+"位："));
-  rankArea.appendChild(s);
-  rankArea.appendChild(document.createElement("br"));
+  var reason = document.createElement("input");
+  reason.placeholder = "理由";
+
+  rankArea.append(
+    document.createTextNode(i+"位："),
+    s,
+    document.createTextNode(" 理由："),
+    reason,
+    document.createElement("br")
+  );
 }
 
 function swapCheck(e){
-  var selects = document.querySelectorAll("select");
   var cur = e.target;
+  var prev = cur.dataset.last;
+  var val = cur.value;
 
-  selects.forEach(function(s){
-    if(s !== cur && s.value === cur.value && cur.value){
-      s.value = "";
+  document.querySelectorAll("select").forEach(function(s){
+    if(s !== cur && s.value === val && val){
+      s.value = prev;
+      s.dataset.last = prev;
     }
   });
+
+  cur.dataset.last = val;
 }
 
 function copyResult(){
   var out = "";
-  var selects = document.querySelectorAll("select");
+  var rows = document.querySelectorAll("#rankArea > br");
 
-  selects.forEach(function(s,i){
-    out += (i+1)+"位："+(s.value || "未選択")+"\n";
-  });
+  var selects = document.querySelectorAll("select");
+  var inputs = document.querySelectorAll("input");
+
+  for(var i=0;i<7;i++){
+    out += (i+1)+"位："+(selects[i].value||"未選択")
+        +"　理由："+(inputs[i].value||"")+"\n";
+  }
 
   var t = document.getElementById("result");
   t.value = out;
