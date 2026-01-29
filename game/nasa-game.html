@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>NASAゲーム</title>
+</head>
+<body>
+    <h1>NASAゲーム</h1>
+    <p>＜任務＞
+      <br>
+      あなたは、月面の太陽の当たる側で母船と<ruby>ランデブー<rt>宇宙船どうしが接近すること</rt></ruby>する予定だった宇宙飛行士の一員である。
+      <br>
+      しかし、機械が故障し、あなたの船は母船から約300km離れた地点に不時着した。
+      <br>
+      不時着のとき多くの機材が壊れ、隊員の生命は母船に到達することにかかっている。
+      <br>
+      下記の15品目は着陸時に破損しないで残ったものであり、その中から300kmを移動するのに必要なものを選ばなければならない。
+      <br>
+      あなたの任務は母船に無事に到達するための重要度に応じて7品目選び、順位付けすることである。
+      <br>
+      <b>健闘を祈る。</b>
+    </p>
+    <p></p>
+  <ul>
+  <li>マッチの入った箱</li>
+  <li><ruby>落下傘の布<rt>パラシュート</rt></ruby></li>
+  <li>粉ミルク一箱</li>
+  <li>自動的に膨らむ救命ボート</li>
+  <li>信号用照明弾</li>
+  <li>宇宙食</li>
+  <li>ソーラー発電の携帯用暖房機</li>
+  <li>酸素ボンベ2本(45kg)</li>
+  <li>方位磁針</li>
+  <li>注射器入りの救急箱</li>
+  <li>ナイロン製ロープ20m</li>
+  <li>45口径ピストル2丁</li>
+  <li>月から見た星座表</li>
+  <li>水20L</li>
+  <li>ソーラー発電式FM送受信機</li>
+</ul>
+
+<hr>
+
+<div id="rankArea"></div>
+
+<button onclick="copyResult()">コピー</button>
+<textarea id="result" readonly></textarea>
+
+<script>
+var items = [
+  {text:"マッチの入った箱", html:"マッチの入った箱"},
+  {text:"落下傘の布", html:"<ruby>落下傘の布<rt>パラシュート</rt></ruby>"},
+  {text:"粉ミルク一箱", html:"粉ミルク一箱"},
+  {text:"自動的に膨らむ救命ボート", html:"自動的に膨らむ救命ボート"},
+  {text:"信号用照明弾", html:"信号用照明弾"},
+  {text:"宇宙食", html:"宇宙食"},
+  {text:"ソーラー発電の携帯用暖房機", html:"ソーラー発電の携帯用暖房機"},
+  {text:"酸素ボンベ2本(45kg)", html:"酸素ボンベ2本(45kg)"},
+  {text:"方位磁針", html:"方位磁針"},
+  {text:"注射器入りの救急箱", html:"注射器入りの救急箱"},
+  {text:"ナイロン製ロープ20m", html:"ナイロン製ロープ20m"},
+  {text:"45口径ピストル2丁", html:"45口径ピストル2丁"},
+  {text:"月から見た星座表", html:"月から見た星座表"},
+  {text:"水20L", html:"水20L"},
+  {text:"ソーラー発電式FM送受信機", html:"ソーラー発電式FM送受信機"}
+];
+
+var rankArea = document.getElementById("rankArea");
+
+for(var i=1;i<=7;i++){
+  var s = document.createElement("select");
+  s.dataset.rank = i;
+  s.onchange = swapCheck;
+
+  var def = document.createElement("option");
+  def.value = "";
+  def.textContent = i+"位を選択";
+  s.appendChild(def);
+
+  for(var j=0;j<items.length;j++){
+    var opt = document.createElement("option");
+    opt.value = items[j].text;
+    opt.innerHTML = items[j].html;
+    s.appendChild(opt);
+  }
+
+  rankArea.appendChild(document.createTextNode(i+"位："));
+  rankArea.appendChild(s);
+  rankArea.appendChild(document.createElement("br"));
+}
+
+function swapCheck(e){
+  var selects = document.querySelectorAll("select");
+  var cur = e.target;
+
+  selects.forEach(function(s){
+    if(s !== cur && s.value === cur.value && cur.value){
+      s.value = "";
+    }
+  });
+}
+
+function copyResult(){
+  var out = "";
+  var selects = document.querySelectorAll("select");
+
+  selects.forEach(function(s,i){
+    out += (i+1)+"位："+(s.value || "未選択")+"\n";
+  });
+
+  var t = document.getElementById("result");
+  t.value = out;
+  t.select();
+  document.execCommand("copy");
+}
+</script>
+
+</body>
+</html>
