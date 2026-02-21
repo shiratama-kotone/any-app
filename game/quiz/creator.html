@@ -130,6 +130,65 @@
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* MOBILE RESPONSIVE */
+  @media (max-width: 900px) {
+    .workspace { 
+      grid-template-columns: 1fr; 
+      position: relative;
+    }
+    
+    .pane, .pane-editor { 
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      border: none;
+    }
+    
+    .pane.mobile-active, .pane-editor.mobile-active { 
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .pane-editor.mobile-active {
+      overflow-y: auto;
+    }
+    
+    /* Mobile nav tabs */
+    .mobile-nav {
+      display: flex;
+      background: var(--s1);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    
+    .mobile-nav-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      font-family: 'Zen Maru Gothic', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 12px;
+      cursor: pointer;
+      transition: all .18s;
+    }
+    
+    .mobile-nav-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      background: rgba(79,158,255,.05);
+    }
+  }
+
+  @media (min-width: 901px) {
+    .mobile-nav { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -143,8 +202,15 @@
 
 <div class="workspace">
 
+  <!-- Mobile Navigation -->
+  <div class="mobile-nav">
+    <button class="mobile-nav-btn active" id="mob-quiz-btn" onclick="showMobilePane('quiz')">クイズ</button>
+    <button class="mobile-nav-btn" id="mob-question-btn" onclick="showMobilePane('question')">問題</button>
+    <button class="mobile-nav-btn" id="mob-editor-btn" onclick="showMobilePane('editor')">編集</button>
+  </div>
+
   <!-- PANE 1: Quiz List -->
-  <div class="pane">
+  <div class="pane mobile-active" id="pane-quiz">
     <div class="pane-header">
       <span class="pane-title">クイズ一覧</span>
       <span id="quiz-badge" style="font-size:11px;color:var(--accent);font-weight:700">0</span>
@@ -156,7 +222,7 @@
   </div>
 
   <!-- PANE 2: Question List -->
-  <div class="pane">
+  <div class="pane" id="pane-question">
     <div class="pane-header">
       <span class="pane-title" id="q-pane-title">問題一覧</span>
       <span id="q-badge" style="font-size:11px;color:var(--accent);font-weight:700">0問</span>
@@ -297,6 +363,11 @@
     save();
     renderQuizList();
     selectQuiz(quizList.length - 1);
+    
+    // Stay on quiz pane on mobile for better UX
+    if (window.innerWidth <= 900) {
+      showMobilePane('question');
+    }
   }
 
   function deleteQuiz(qi, e) {
@@ -319,6 +390,11 @@
     renderQuizList();
     renderQuestionList();
     renderQuizMeta();
+    
+    // Switch to question pane on mobile
+    if (window.innerWidth <= 900) {
+      showMobilePane('question');
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -339,6 +415,11 @@
     save();
     renderQuestionList();
     selectQuestion(quizList[activeQI].questions.length - 1);
+    
+    // Switch to editor on mobile
+    if (window.innerWidth <= 900) {
+      showMobilePane('editor');
+    }
   }
 
   function deleteQuestion(qi, e) {
@@ -358,6 +439,11 @@
     save();
     renderQuestionList();
     renderQuestionEditor();
+    
+    // Switch to editor pane on mobile
+    if (window.innerWidth <= 900) {
+      showMobilePane('editor');
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -913,6 +999,24 @@ const quizzes = ${JSON.stringify(data, null, 2)};
     t.textContent = msg;
     t.className = 'toast ' + type + ' show';
     setTimeout(() => t.className = 'toast ' + type, 2800);
+  }
+
+  function showMobilePane(pane) {
+    // Remove active from all panes and buttons
+    document.querySelectorAll('.pane').forEach(p => p.classList.remove('mobile-active'));
+    document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
+    
+    // Add active to selected
+    if (pane === 'quiz') {
+      document.getElementById('pane-quiz').classList.add('mobile-active');
+      document.getElementById('mob-quiz-btn').classList.add('active');
+    } else if (pane === 'question') {
+      document.getElementById('pane-question').classList.add('mobile-active');
+      document.getElementById('mob-question-btn').classList.add('active');
+    } else if (pane === 'editor') {
+      document.getElementById('editor').classList.add('mobile-active');
+      document.getElementById('mob-editor-btn').classList.add('active');
+    }
   }
 
   document.getElementById('export-modal').addEventListener('click', e => {
