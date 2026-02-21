@@ -184,11 +184,11 @@
 <div class="overlay" id="export-modal">
   <div class="modal">
     <div class="modal-head">
-      <span class="modal-title">📦 data.js 出力</span>
+      <span class="modal-title">📦 quiz-data.js 出力</span>
       <button class="modal-close" onclick="closeExport()">✕</button>
     </div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
-      コードをコピーまたはダウンロードして、<strong style="color:var(--accent)">data.js</strong> として保存してください。
+      コードをコピーまたはダウンロードして、<strong style="color:var(--accent)">quiz-data.js</strong> として保存してください。
     </p>
     <div class="code-area" id="export-code"></div>
     <div class="modal-actions">
@@ -208,12 +208,12 @@
     </div>
     
     <div style="margin-bottom:20px">
-      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">1️⃣ data.js から自動読み込み</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">1️⃣ quiz-data.js から自動読み込み</div>
       <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
-        このHTMLと同じフォルダにある data.js のデータを読み込みます。
+        このHTMLと同じフォルダにある quiz-data.js のデータを読み込みます。
       </p>
       <button class="btn btn-primary" style="width:100%" onclick="importFromDataJS()">
-        📥 data.js から読み込む
+        📥 quiz-data.js から読み込む
       </button>
     </div>
 
@@ -268,7 +268,7 @@
       if (d) {
         quizList = JSON.parse(d);
       } else {
-        // 初回起動時：data.js から自動インポート
+        // 初回起動時：quiz-data.js から自動インポート
         autoImportFromDataJS();
       }
     } catch(e) {}
@@ -278,7 +278,7 @@
     if (typeof quizzes !== 'undefined' && Array.isArray(quizzes) && quizzes.length > 0) {
       quizList = JSON.parse(JSON.stringify(quizzes)); // Deep copy
       save();
-      console.log('✅ data.js から自動的にインポートしました');
+      console.log('✅ quiz-data.js から自動的にインポートしました');
     }
   }
 
@@ -771,7 +771,7 @@
     }));
 
     return `// ============================================================
-//  data.js — クイズデータファイル
+//  quiz-data.js — クイズデータファイル
 //  Generated: ${new Date().toLocaleString('ja-JP')}
 // ============================================================
 
@@ -827,9 +827,16 @@ const quizzes = ${JSON.stringify(data, null, 2)};
     save();
     renderQuizList();
     renderQuestionList();
-    renderEmpty();
+    
+    // クイズがあれば最初のクイズを選択、なければ空画面
+    if (quizList.length > 0) {
+      selectQuiz(0);
+    } else {
+      renderEmpty();
+    }
+    
     closeImport();
-    toast('✅ quiz-data.js からインポートしました', 'ok');
+    toast(`✅ ${quizList.length}件のクイズをインポートしました`, 'ok');
   }
 
   function handleFileUpload(event) {
@@ -868,7 +875,14 @@ const quizzes = ${JSON.stringify(data, null, 2)};
         save();
         renderQuizList();
         renderQuestionList();
-        renderEmpty();
+        
+        // クイズがあれば最初のクイズを選択、なければ空画面
+        if (quizList.length > 0) {
+          selectQuiz(0);
+        } else {
+          renderEmpty();
+        }
+        
         closeImport();
         toast(`✅ ${importedQuizzes.length}件のクイズをインポートしました`, 'ok');
       } catch (err) {
