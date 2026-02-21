@@ -137,6 +137,7 @@
 <div class="topbar">
   <span class="logo">✏️ Quiz Creator</span>
   <span class="topbar-sep"></span>
+  <button class="btn btn-ghost btn-sm" onclick="openImport()">📥 インポート</button>
   <button class="btn btn-ghost btn-sm" onclick="openExport()">📦 データ出力</button>
 </div>
 
@@ -183,11 +184,11 @@
 <div class="overlay" id="export-modal">
   <div class="modal">
     <div class="modal-head">
-      <span class="modal-title">📦 quiz-data.js 出力</span>
+      <span class="modal-title">📦 data.js 出力</span>
       <button class="modal-close" onclick="closeExport()">✕</button>
     </div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
-      コードをコピーまたはダウンロードして、<strong style="color:var(--accent)">quiz-data.js</strong> として保存してください。
+      コードをコピーまたはダウンロードして、<strong style="color:var(--accent)">data.js</strong> として保存してください。
     </p>
     <div class="code-area" id="export-code"></div>
     <div class="modal-actions">
@@ -198,8 +199,50 @@
   </div>
 </div>
 
+<!-- Import Modal -->
+<div class="overlay" id="import-modal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-head">
+      <span class="modal-title">📥 クイズデータのインポート</span>
+      <button class="modal-close" onclick="closeImport()">✕</button>
+    </div>
+    
+    <div style="margin-bottom:20px">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">1️⃣ data.js から自動読み込み</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        このHTMLと同じフォルダにある data.js のデータを読み込みます。
+      </p>
+      <button class="btn btn-primary" style="width:100%" onclick="importFromDataJS()">
+        📥 data.js から読み込む
+      </button>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:20px">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">2️⃣ ファイルをアップロード</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        ローカルの .js ファイルを選択して読み込みます。
+      </p>
+      <input type="file" id="file-input" accept=".js,application/javascript" style="display:none" onchange="handleFileUpload(event)">
+      <button class="btn btn-ghost" style="width:100%" onclick="document.getElementById('file-input').click()">
+        📁 ファイルを選択
+      </button>
+    </div>
+
+    <div style="margin-top:20px;padding:12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px">
+      <div style="font-size:11px;color:#fca5a5;line-height:1.6">
+        ⚠️ <strong>注意:</strong> インポートすると現在の編集内容は上書きされます。必要に応じて先にエクスポートしてください。
+      </div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeImport()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
+<script src="data.js"></script>
 <script>
   // ═══════════════════════════════════════════════════════════
   //  State
@@ -222,8 +265,21 @@
   function load() {
     try {
       const d = sessionStorage.getItem('qc2');
-      if (d) quizList = JSON.parse(d);
+      if (d) {
+        quizList = JSON.parse(d);
+      } else {
+        // 初回起動時：data.js から自動インポート
+        autoImportFromDataJS();
+      }
     } catch(e) {}
+  }
+
+  function autoImportFromDataJS() {
+    if (typeof quizzes !== 'undefined' && Array.isArray(quizzes) && quizzes.length > 0) {
+      quizList = JSON.parse(JSON.stringify(quizzes)); // Deep copy
+      save();
+      console.log('✅ data.js から自動的にインポートしました');
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -715,7 +771,7 @@
     }));
 
     return `// ============================================================
-//  quiz-data.js — クイズデータファイル
+//  data.js — クイズデータファイル
 //  Generated: ${new Date().toLocaleString('ja-JP')}
 // ============================================================
 
@@ -745,6 +801,93 @@ const quizzes = ${JSON.stringify(data, null, 2)};
   }
 
   // ═══════════════════════════════════════════════════════════
+  //  Import
+  // ═══════════════════════════════════════════════════════════
+  function openImport() {
+    document.getElementById('import-modal').classList.add('open');
+  }
+
+  function closeImport() {
+    document.getElementById('import-modal').classList.remove('open');
+  }
+
+  function importFromDataJS() {
+    if (typeof quizzes === 'undefined' || !Array.isArray(quizzes)) {
+      toast('❌ quiz-data.js が見つかりません', 'err');
+      return;
+    }
+
+    if (!confirm('現在の編集内容を破棄して、quiz-data.js から読み込みますか？')) {
+      return;
+    }
+
+    quizList = JSON.parse(JSON.stringify(quizzes)); // Deep copy
+    activeQI = -1;
+    activeQI_Q = -1;
+    save();
+    renderQuizList();
+    renderQuestionList();
+    renderEmpty();
+    closeImport();
+    toast('✅ quiz-data.js からインポートしました', 'ok');
+  }
+
+  function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!confirm('現在の編集内容を破棄して、ファイルから読み込みますか？')) {
+      event.target.value = ''; // Reset input
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target.result;
+        
+        // Extract quizzes array from JS file
+        // Look for: const quizzes = [...];
+        const match = content.match(/const\s+quizzes\s*=\s*(\[[\s\S]*?\]);/);
+        if (!match) {
+          toast('❌ quizzes 配列が見つかりません', 'err');
+          return;
+        }
+
+        const quizzesJSON = match[1];
+        const importedQuizzes = JSON.parse(quizzesJSON);
+
+        if (!Array.isArray(importedQuizzes) || importedQuizzes.length === 0) {
+          toast('❌ 有効なクイズデータがありません', 'err');
+          return;
+        }
+
+        quizList = importedQuizzes;
+        activeQI = -1;
+        activeQI_Q = -1;
+        save();
+        renderQuizList();
+        renderQuestionList();
+        renderEmpty();
+        closeImport();
+        toast(`✅ ${importedQuizzes.length}件のクイズをインポートしました`, 'ok');
+      } catch (err) {
+        console.error(err);
+        toast('❌ ファイルの読み込みに失敗しました', 'err');
+      } finally {
+        event.target.value = ''; // Reset input
+      }
+    };
+
+    reader.onerror = () => {
+      toast('❌ ファイルの読み込みに失敗しました', 'err');
+      event.target.value = '';
+    };
+
+    reader.readAsText(file);
+  }
+
+  // ═══════════════════════════════════════════════════════════
   //  Helpers
   // ═══════════════════════════════════════════════════════════
   function esc(s) {
@@ -760,6 +903,10 @@ const quizzes = ${JSON.stringify(data, null, 2)};
 
   document.getElementById('export-modal').addEventListener('click', e => {
     if (e.target === e.currentTarget) closeExport();
+  });
+
+  document.getElementById('import-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeImport();
   });
 
   document.addEventListener('keydown', e => {
