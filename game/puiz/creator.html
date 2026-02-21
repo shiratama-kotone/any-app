@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>クイズ作成ツール</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #08101f; --s1: #0f1826; --s2: #172035; --s3: #1e2a47;
+    --border: #263350; --accent: #4f9eff; --gold: #f7c948;
+    --green: #22c55e; --red: #ef4444; --text: #e8edf5; --muted: #6b7fa0; --r: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Zen Maru Gothic', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* TOPBAR */
+  .topbar { height: 54px; background: rgba(8,16,31,.95); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 12px; flex-shrink: 0; backdrop-filter: blur(10px); z-index: 50; }
+  .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 17px; background: linear-gradient(135deg, var(--accent), var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-right: 8px; }
+  .topbar-sep { flex: 1; }
+  .btn { border: none; border-radius: 8px; cursor: pointer; font-family: 'Zen Maru Gothic', sans-serif; font-size: 13px; font-weight: 700; padding: 8px 16px; transition: all .18s; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), #6b8fff); color: #fff; box-shadow: 0 3px 12px rgba(79,158,255,.25); }
+  .btn-primary:hover { transform: translateY(-1px); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+  /* WORKSPACE */
+  .workspace { flex: 1; display: grid; grid-template-columns: 220px 300px 1fr; overflow: hidden; }
+
+  /* PANES */
+  .pane { background: var(--s1); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .pane-header { padding: 14px 14px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .pane-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; }
+  .pane-body { flex: 1; overflow-y: auto; padding: 10px; }
+  .pane-footer { padding: 10px; border-top: 1px solid var(--border); }
+
+  /* QUIZ LIST */
+  .quiz-item { border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; cursor: pointer; transition: all .18s; border: 1px solid transparent; display: flex; align-items: center; gap: 8px; }
+  .quiz-item:hover { background: var(--s2); }
+  .quiz-item.active { background: rgba(79,158,255,.1); border-color: rgba(79,158,255,.3); }
+  .qi-icon { font-size: 20px; flex-shrink: 0; }
+  .qi-info { flex: 1; min-width: 0; }
+  .qi-title { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .qi-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .qi-del { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 14px; padding: 2px 4px; border-radius: 4px; transition: all .15s; flex-shrink: 0; }
+  .qi-del:hover { color: var(--red); }
+
+  /* Q LIST */
+  .q-item { border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; cursor: pointer; transition: all .18s; border: 1px solid transparent; display: flex; align-items: flex-start; gap: 8px; }
+  .q-item:hover { background: var(--s2); }
+  .q-item.active { background: rgba(79,158,255,.1); border-color: rgba(79,158,255,.3); }
+  .qi-num { min-width: 26px; height: 26px; border-radius: 6px; background: var(--s3); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--muted); flex-shrink: 0; }
+  .q-item.active .qi-num { background: var(--accent); border-color: var(--accent); color: white; }
+  .qi-q { flex: 1; font-size: 12px; line-height: 1.5; color: var(--text); overflow: hidden; }
+  .qi-q-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+  .qi-pts { font-size: 11px; color: var(--gold); font-weight: 700; margin-top: 2px; }
+  .qi-type { font-size: 10px; color: #c4b5fd; background: rgba(168,85,247,.15); border-radius: 4px; padding: 2px 6px; margin-top: 2px; display: inline-block; }
+
+  /* ADD BTNS */
+  .add-btn { width: 100%; background: none; border: 1px dashed var(--border); border-radius: 8px; color: var(--muted); font-family: 'Zen Maru Gothic', sans-serif; font-size: 12px; font-weight: 700; padding: 9px; cursor: pointer; transition: all .18s; }
+  .add-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* EDITOR */
+  .pane-editor { overflow-y: auto; padding: 20px; background: var(--bg); }
+  .card { background: var(--s1); border: 1px solid var(--border); border-radius: var(--r); padding: 20px; margin-bottom: 18px; animation: slideIn .3s ease both; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .card-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 14px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 80px; gap: 12px; margin-bottom: 12px; }
+  .fg { margin-bottom: 14px; }
+  .fg:last-child { margin-bottom: 0; }
+  .fg label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  input[type="text"], input[type="number"], input[type="url"], textarea, select {
+    width: 100%; background: var(--s2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Zen Maru Gothic', sans-serif; font-size: 13px; padding: 9px 12px; transition: border-color .18s; outline: none;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,158,255,.1); }
+  textarea { resize: vertical; }
+  input[type="color"] { width: 100%; height: 38px; background: var(--s2); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; padding: 3px 6px; }
+
+  /* Q EDITOR */
+  .q-editor-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .q-editor-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; color: var(--accent); }
+  .score-wrap { display: flex; align-items: center; gap: 8px; }
+  .score-wrap label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+  .score-wrap input { width: 72px; }
+  .score-wrap span { font-size: 12px; color: var(--gold); font-weight: 700; }
+
+  /* CHOICE ROW */
+  .choice-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .choice-letter { min-width: 30px; height: 30px; border-radius: 6px; background: var(--s2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--muted); flex-shrink: 0; }
+  .choice-inp { flex: 1; }
+
+  /* CHECKBOX/RADIO */
+  .choice-check { appearance: none; min-width: 22px; height: 22px; border: 2px solid var(--border); cursor: pointer; transition: all .15s; flex-shrink: 0; position: relative; }
+  .choice-check[type="radio"] { border-radius: 50%; }
+  .choice-check[type="checkbox"] { border-radius: 5px; }
+  .choice-check:checked { border-color: var(--green); background: var(--green); }
+  .choice-check:checked::after { content: '✓'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: white; font-size: 13px; font-weight: 700; }
+
+  .del-choice { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 14px; padding: 3px 5px; border-radius: 4px; transition: all .15s; }
+  .del-choice:hover { color: var(--red); }
+
+  .add-choice-btn { width: 100%; background: none; border: 1px dashed var(--border); border-radius: 8px; color: var(--muted); font-family: 'Zen Maru Gothic', sans-serif; font-size: 12px; font-weight: 700; padding: 9px; cursor: pointer; transition: all .18s; }
+  .add-choice-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-icon { font-size: 44px; display: block; margin-bottom: 12px; }
+  .empty-text { font-size: 14px; margin-bottom: 20px; line-height: 1.6; }
+
+  /* MODAL */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: none; align-items: center; justify-content: center; z-index: 200; backdrop-filter: blur(8px); padding: 20px; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--s1); border: 1px solid var(--border); border-radius: 14px; padding: 24px; max-width: 660px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 32px 80px rgba(0,0,0,.6); animation: slideIn .25s ease both; }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .modal-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; }
+  .modal-close { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: color .15s; }
+  .modal-close:hover { color: var(--text); }
+  .code-area { flex: 1; overflow-y: auto; max-height: 380px; background: #040a14; border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 11px; line-height: 1.7; color: #a8d8ea; white-space: pre-wrap; word-break: break-all; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 14px; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--s1); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; font-size: 13px; font-weight: 700; box-shadow: 0 8px 32px rgba(0,0,0,.4); transform: translateY(80px); opacity: 0; transition: all .3s cubic-bezier(.4,0,.2,1); z-index: 300; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.ok { border-color: var(--green); color: #86efac; }
+  .toast.err { border-color: var(--red); color: #fca5a5; }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">✏️ Quiz Creator</span>
+  <span class="topbar-sep"></span>
+  <button class="btn btn-ghost btn-sm" onclick="openExport()">📦 データ出力</button>
+</div>
+
+<div class="workspace">
+
+  <!-- PANE 1: Quiz List -->
+  <div class="pane">
+    <div class="pane-header">
+      <span class="pane-title">クイズ一覧</span>
+      <span id="quiz-badge" style="font-size:11px;color:var(--accent);font-weight:700">0</span>
+    </div>
+    <div class="pane-body" id="quiz-list"></div>
+    <div class="pane-footer">
+      <button class="add-btn" onclick="addQuiz()">＋ クイズ追加</button>
+    </div>
+  </div>
+
+  <!-- PANE 2: Question List -->
+  <div class="pane">
+    <div class="pane-header">
+      <span class="pane-title" id="q-pane-title">問題一覧</span>
+      <span id="q-badge" style="font-size:11px;color:var(--accent);font-weight:700">0問</span>
+    </div>
+    <div class="pane-body" id="q-list">
+      <div class="empty"><span class="empty-icon">←</span><p class="empty-text">クイズを選択</p></div>
+    </div>
+    <div class="pane-footer">
+      <button class="add-btn" id="add-q-btn" onclick="addQuestion()" disabled>＋ 問題追加</button>
+    </div>
+  </div>
+
+  <!-- PANE 3: Editor -->
+  <div class="pane-editor" id="editor">
+    <div class="empty">
+      <span class="empty-icon">📝</span>
+      <p class="empty-text">クイズと問題を選択して<br>編集を始めましょう</p>
+      <button class="btn btn-primary" onclick="addQuiz()">最初のクイズを作成</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Export Modal -->
+<div class="overlay" id="export-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">📦 quiz-data.js 出力</span>
+      <button class="modal-close" onclick="closeExport()">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
+      コードをコピーまたはダウンロードして、<strong style="color:var(--accent)">quiz-data.js</strong> として保存してください。
+    </p>
+    <div class="code-area" id="export-code"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" style="flex:1" onclick="copyExport()">📋 コピー</button>
+      <button class="btn btn-ghost" onclick="downloadExport()">💾 ダウンロード</button>
+      <button class="btn btn-ghost" onclick="closeExport()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ═══════════════════════════════════════════════════════════
+  //  State
+  // ═══════════════════════════════════════════════════════════
+  const LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+  const ICONS = ['📚','🔬','🏯','⚽','🎵','🌍','💡','🍕','🎮','🖥','🐾','✈️'];
+  const COLORS = ['#4f9eff','#22c55e','#f7c948','#f97316','#a78bfa','#ec4899','#14b8a6','#ef4444'];
+
+  let quizList = [];
+  let activeQI = -1;
+  let activeQI_Q = -1;
+
+  // ═══════════════════════════════════════════════════════════
+  //  Persistence
+  // ═══════════════════════════════════════════════════════════
+  function save() {
+    try { sessionStorage.setItem('qc2', JSON.stringify(quizList)); } catch(e) {}
+  }
+
+  function load() {
+    try {
+      const d = sessionStorage.getItem('qc2');
+      if (d) quizList = JSON.parse(d);
+    } catch(e) {}
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Quiz CRUD
+  // ═══════════════════════════════════════════════════════════
+  function addQuiz() {
+    quizList.push({
+      id: 'quiz_' + Date.now(),
+      title: '新しいクイズ ' + (quizList.length + 1),
+      description: '',
+      icon: ICONS[quizList.length % ICONS.length],
+      color: COLORS[quizList.length % COLORS.length],
+      questions: []
+    });
+    save();
+    renderQuizList();
+    selectQuiz(quizList.length - 1);
+  }
+
+  function deleteQuiz(qi, e) {
+    e.stopPropagation();
+    if (!confirm(`「${quizList[qi].title}」を削除しますか？`)) return;
+    quizList.splice(qi, 1);
+    activeQI = activeQI >= quizList.length ? quizList.length - 1 : activeQI;
+    activeQI_Q = -1;
+    save();
+    renderQuizList();
+    if (activeQI >= 0) selectQuiz(activeQI);
+    else renderEmpty();
+  }
+
+  function selectQuiz(qi) {
+    commit();
+    activeQI = qi;
+    activeQI_Q = -1;
+    save();
+    renderQuizList();
+    renderQuestionList();
+    renderQuizMeta();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Question CRUD
+  // ═══════════════════════════════════════════════════════════
+  function addQuestion() {
+    if (activeQI < 0) return;
+    commit();
+    quizList[activeQI].questions.push({
+      id: Date.now(),
+      type: 'single',
+      question: '',
+      choices: ['', '', '', ''],
+      answer: 0,
+      explanation: '',
+      score: 10
+    });
+    save();
+    renderQuestionList();
+    selectQuestion(quizList[activeQI].questions.length - 1);
+  }
+
+  function deleteQuestion(qi, e) {
+    e.stopPropagation();
+    if (!confirm(`問題 ${qi + 1} を削除しますか？`)) return;
+    quizList[activeQI].questions.splice(qi, 1);
+    activeQI_Q = activeQI_Q >= quizList[activeQI].questions.length ? quizList[activeQI].questions.length - 1 : activeQI_Q;
+    save();
+    renderQuestionList();
+    if (activeQI_Q >= 0) selectQuestion(activeQI_Q);
+    else renderQuizMeta();
+  }
+
+  function selectQuestion(qi) {
+    commit();
+    activeQI_Q = qi;
+    save();
+    renderQuestionList();
+    renderQuestionEditor();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Commit edits
+  // ═══════════════════════════════════════════════════════════
+  function commit() {
+    // Quiz meta
+    if (activeQI >= 0) {
+      const quiz = quizList[activeQI];
+      const ti = document.getElementById('meta-title');
+      const di = document.getElementById('meta-desc');
+      const ic = document.getElementById('meta-icon');
+      const co = document.getElementById('meta-color');
+      if (ti) quiz.title = ti.value;
+      if (di) quiz.description = di.value;
+      if (ic) quiz.icon = ic.value;
+      if (co) quiz.color = co.value;
+    }
+    // Question
+    if (activeQI >= 0 && activeQI_Q >= 0) {
+      const q = quizList[activeQI].questions[activeQI_Q];
+      const qt = document.getElementById('q-text');
+      const qs = document.getElementById('q-score');
+      const qe = document.getElementById('q-expl');
+      const qi = document.getElementById('q-image');
+      const qtype = document.getElementById('q-type');
+      if (qt) q.question = qt.value;
+      if (qs) q.score = parseInt(qs.value) || 10;
+      if (qe) q.explanation = qe.value;
+      if (qi) q.image = qi.value || undefined;
+      if (qtype) q.type = qtype.value;
+
+      if (q.type === 'single') {
+        document.querySelectorAll('.choice-row').forEach((row, i) => {
+          const inp = row.querySelector('.choice-inp');
+          const radio = row.querySelector('input[type="radio"]');
+          if (inp && i < q.choices.length) q.choices[i] = inp.value;
+          if (radio && radio.checked) q.answer = i;
+        });
+      } else if (q.type === 'multiple') {
+        document.querySelectorAll('.choice-row').forEach((row, i) => {
+          const inp = row.querySelector('.choice-inp');
+          const cb = row.querySelector('input[type="checkbox"]');
+          if (inp && i < q.choices.length) q.choices[i] = inp.value;
+        });
+        const checked = [];
+        document.querySelectorAll('.choice-row input[type="checkbox"]').forEach((cb, i) => {
+          if (cb.checked) checked.push(i);
+        });
+        q.answer = checked;
+      } else if (q.type === 'input') {
+        const ansInputs = document.querySelectorAll('.answer-variant-inp');
+        q.answer = Array.from(ansInputs).map(inp => inp.value).filter(v => v.trim());
+        const cs = document.getElementById('q-case-sensitive');
+        if (cs) q.caseSensitive = cs.checked;
+      }
+    }
+    save();
+  }
+
+  let commitTimer;
+  function autoCommit() {
+    clearTimeout(commitTimer);
+    commitTimer = setTimeout(() => {
+      commit();
+      renderQuizList();
+      renderQuestionList();
+    }, 400);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Render Quiz List
+  // ═══════════════════════════════════════════════════════════
+  function renderQuizList() {
+    document.getElementById('quiz-badge').textContent = quizList.length;
+    const el = document.getElementById('quiz-list');
+    if (quizList.length === 0) {
+      el.innerHTML = '<div class="empty"><span class="empty-icon">📭</span><p class="empty-text" style="font-size:12px">クイズなし</p></div>';
+      return;
+    }
+    el.innerHTML = '';
+    quizList.forEach((quiz, qi) => {
+      const item = document.createElement('div');
+      item.className = 'quiz-item' + (qi === activeQI ? ' active' : '');
+      item.onclick = () => selectQuiz(qi);
+      item.innerHTML = `
+        <span class="qi-icon">${quiz.icon || '📝'}</span>
+        <div class="qi-info">
+          <div class="qi-title">${quiz.title || '（無題）'}</div>
+          <div class="qi-sub">${(quiz.questions || []).length}問</div>
+        </div>
+        <button class="qi-del" onclick="deleteQuiz(${qi}, event)">🗑</button>
+      `;
+      el.appendChild(item);
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Render Question List
+  // ═══════════════════════════════════════════════════════════
+  function renderQuestionList() {
+    const addBtn = document.getElementById('add-q-btn');
+    const titleEl = document.getElementById('q-pane-title');
+    const badgeEl = document.getElementById('q-badge');
+
+    if (activeQI < 0) {
+      document.getElementById('q-list').innerHTML = '<div class="empty"><span class="empty-icon">←</span><p class="empty-text" style="font-size:12px">クイズを選択</p></div>';
+      addBtn.disabled = true;
+      return;
+    }
+
+    const quiz = quizList[activeQI];
+    titleEl.textContent = quiz.title || '問題一覧';
+    badgeEl.textContent = (quiz.questions || []).length + '問';
+    addBtn.disabled = false;
+
+    const el = document.getElementById('q-list');
+    if (!quiz.questions || quiz.questions.length === 0) {
+      el.innerHTML = '<div class="empty"><span class="empty-icon">📄</span><p class="empty-text" style="font-size:12px">問題なし</p></div>';
+      return;
+    }
+
+    el.innerHTML = '';
+    quiz.questions.forEach((q, qi) => {
+      const typeLabel = q.type === 'single' ? '単一' : q.type === 'multiple' ? '複数' : '入力';
+      const item = document.createElement('div');
+      item.className = 'q-item' + (qi === activeQI_Q ? ' active' : '');
+      item.onclick = () => selectQuestion(qi);
+      item.innerHTML = `
+        <div class="qi-num">${qi + 1}</div>
+        <div class="qi-q">
+          <div class="qi-q-text">${q.question || '（未入力）'}</div>
+          <div><span class="qi-type">${typeLabel}</span> <span class="qi-pts">⭐${q.score || 10}pt</span></div>
+        </div>
+        <button class="qi-del" onclick="deleteQuestion(${qi}, event)">🗑</button>
+      `;
+      el.appendChild(item);
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Render Quiz Meta
+  // ═══════════════════════════════════════════════════════════
+  function renderQuizMeta() {
+    if (activeQI < 0) { renderEmpty(); return; }
+    const quiz = quizList[activeQI];
+
+    document.getElementById('editor').innerHTML = `
+      <div class="card">
+        <div class="card-label">📋 クイズ設定</div>
+        <div class="form-row">
+          <div class="fg">
+            <label>タイトル</label>
+            <input type="text" id="meta-title" value="${esc(quiz.title)}" placeholder="クイズタイトル" oninput="autoCommit()">
+          </div>
+          <div class="fg">
+            <label>アイコン（絵文字）</label>
+            <input type="text" id="meta-icon" value="${esc(quiz.icon)}" placeholder="📚" oninput="autoCommit()">
+          </div>
+        </div>
+        <div class="form-row-3">
+          <div class="fg" style="grid-column:1/3">
+            <label>説明文</label>
+            <input type="text" id="meta-desc" value="${esc(quiz.description)}" placeholder="説明..." oninput="autoCommit()">
+          </div>
+          <div class="fg">
+            <label>テーマカラー</label>
+            <input type="color" id="meta-color" value="${quiz.color || '#4f9eff'}" oninput="autoCommit()">
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);padding-top:8px;border-top:1px solid var(--border)">
+          問題数: <strong style="color:var(--text)">${(quiz.questions || []).length}問</strong> ／ 
+          満点: <strong style="color:var(--gold)">${(quiz.questions || []).reduce((s,q)=>s+(q.score||10),0)}pt</strong>
+        </div>
+      </div>
+      <div class="empty" style="padding:40px 20px">
+        <span class="empty-icon">📄</span>
+        <p class="empty-text" style="font-size:13px">左の問題一覧から選ぶか<br>「＋ 問題追加」で作成</p>
+      </div>
+    `;
+  }
+
+  function renderEmpty() {
+    document.getElementById('editor').innerHTML = `
+      <div class="empty">
+        <span class="empty-icon">📝</span>
+        <p class="empty-text">クイズと問題を選択して<br>編集を始めましょう</p>
+        <button class="btn btn-primary" onclick="addQuiz()">最初のクイズを作成</button>
+      </div>
+    `;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Render Question Editor
+  // ═══════════════════════════════════════════════════════════
+  function renderQuestionEditor() {
+    const quiz = quizList[activeQI];
+    const q = quiz.questions[activeQI_Q];
+
+    let choicesHTML = '';
+    if (q.type === 'single') {
+      choicesHTML = `
+        <div class="fg">
+          <label>選択肢（正解にチェック）</label>
+          ${renderSingleChoices(q)}
+          ${q.choices.length < 10 ? '<button class="add-choice-btn" onclick="addChoice()">＋ 選択肢追加</button>' : ''}
+        </div>
+      `;
+    } else if (q.type === 'multiple') {
+      choicesHTML = `
+        <div class="fg">
+          <label>選択肢（正解を複数チェック）</label>
+          ${renderMultipleChoices(q)}
+          ${q.choices.length < 10 ? '<button class="add-choice-btn" onclick="addChoice()">＋ 選択肢追加</button>' : ''}
+        </div>
+      `;
+    } else if (q.type === 'input') {
+      choicesHTML = `
+        <div class="fg">
+          <label>正解（複数可）</label>
+          ${renderInputAnswers(q)}
+          <button class="add-choice-btn" onclick="addAnswerVariant()">＋ 正解パターン追加</button>
+          <div style="margin-top:8px">
+            <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="q-case-sensitive" ${q.caseSensitive ? 'checked' : ''} onchange="autoCommit()">
+              <span style="font-size:12px;text-transform:none">大文字・小文字を区別する</span>
+            </label>
+          </div>
+        </div>
+      `;
+    }
+
+    document.getElementById('editor').innerHTML = `
+      <div class="card" style="padding:14px 18px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">
+            ${quiz.icon || '📝'} ${quiz.title} › Q${activeQI_Q + 1}
+          </div>
+          <div style="display:flex;gap:6px">
+            ${activeQI_Q > 0 ? `<button class="btn btn-ghost btn-sm" onclick="selectQuestion(${activeQI_Q - 1})">← 前</button>` : ''}
+            ${activeQI_Q < quiz.questions.length - 1 ? `<button class="btn btn-ghost btn-sm" onclick="selectQuestion(${activeQI_Q + 1})">次 →</button>` : ''}
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="q-editor-header">
+          <div class="q-editor-title">Q${activeQI_Q + 1} 編集</div>
+          <div class="score-wrap">
+            <label>スコア</label>
+            <input type="number" id="q-score" value="${q.score || 10}" min="1" max="999" oninput="autoCommit()">
+            <span>pt</span>
+          </div>
+        </div>
+
+        <div class="fg">
+          <label>問題タイプ</label>
+          <select id="q-type" onchange="changeQuestionType()">
+            <option value="single" ${q.type === 'single' ? 'selected' : ''}>単一選択（ラジオボタン）</option>
+            <option value="multiple" ${q.type === 'multiple' ? 'selected' : ''}>複数選択（チェックボックス）</option>
+            <option value="input" ${q.type === 'input' ? 'selected' : ''}>テキスト入力</option>
+          </select>
+        </div>
+
+        <div class="fg">
+          <label>問題文</label>
+          <textarea id="q-text" rows="3" placeholder="問題文..." oninput="autoCommit()">${esc(q.question)}</textarea>
+        </div>
+
+        <div class="fg">
+          <label>画像URL（任意）</label>
+          <input type="url" id="q-image" value="${esc(q.image || '')}" placeholder="https://..." oninput="autoCommit()">
+        </div>
+
+        ${choicesHTML}
+
+        <div class="fg">
+          <label>解説（任意）</label>
+          <textarea id="q-expl" rows="2" placeholder="正解の解説..." oninput="autoCommit()">${esc(q.explanation || '')}</textarea>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderSingleChoices(q) {
+    return q.choices.map((c, i) => `
+      <div class="choice-row">
+        <div class="choice-letter">${LETTERS[i]}</div>
+        <input type="radio" class="choice-check" name="ans" ${i === q.answer ? 'checked' : ''} onclick="setAnswer(${i})">
+        <input type="text" class="choice-inp" value="${esc(c)}" placeholder="選択肢 ${LETTERS[i]}..." oninput="autoCommit()">
+        ${q.choices.length > 2 ? `<button class="del-choice" onclick="removeChoice(${i})">✕</button>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function renderMultipleChoices(q) {
+    return q.choices.map((c, i) => `
+      <div class="choice-row">
+        <div class="choice-letter">${LETTERS[i]}</div>
+        <input type="checkbox" class="choice-check" ${q.answer.includes(i) ? 'checked' : ''} onchange="autoCommit()">
+        <input type="text" class="choice-inp" value="${esc(c)}" placeholder="選択肢 ${LETTERS[i]}..." oninput="autoCommit()">
+        ${q.choices.length > 2 ? `<button class="del-choice" onclick="removeChoice(${i})">✕</button>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function renderInputAnswers(q) {
+    const answers = q.answer || [''];
+    return answers.map((a, i) => `
+      <div class="choice-row">
+        <div class="choice-letter">${i + 1}</div>
+        <input type="text" class="answer-variant-inp choice-inp" value="${esc(a)}" placeholder="正解パターン ${i + 1}..." oninput="autoCommit()">
+        ${answers.length > 1 ? `<button class="del-choice" onclick="removeAnswerVariant(${i})">✕</button>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function changeQuestionType() {
+    commit();
+    const q = quizList[activeQI].questions[activeQI_Q];
+    const newType = document.getElementById('q-type').value;
+    
+    if (newType === 'single') {
+      if (!q.choices) q.choices = ['', '', '', ''];
+      q.answer = 0;
+    } else if (newType === 'multiple') {
+      if (!q.choices) q.choices = ['', '', '', ''];
+      q.answer = [];
+    } else if (newType === 'input') {
+      q.answer = [''];
+      q.caseSensitive = false;
+    }
+
+    save();
+    renderQuestionEditor();
+  }
+
+  function addChoice() {
+    commit();
+    const q = quizList[activeQI].questions[activeQI_Q];
+    if (q.choices.length >= 10) return;
+    q.choices.push('');
+    save();
+    renderQuestionEditor();
+  }
+
+  function removeChoice(ci) {
+    commit();
+    const q = quizList[activeQI].questions[activeQI_Q];
+    if (q.choices.length <= 2) return;
+    q.choices.splice(ci, 1);
+    if (q.type === 'single' && q.answer >= q.choices.length) q.answer = 0;
+    if (q.type === 'multiple') q.answer = q.answer.filter(a => a < q.choices.length);
+    save();
+    renderQuestionEditor();
+  }
+
+  function setAnswer(idx) {
+    if (activeQI < 0 || activeQI_Q < 0) return;
+    quizList[activeQI].questions[activeQI_Q].answer = idx;
+    save();
+  }
+
+  function addAnswerVariant() {
+    commit();
+    const q = quizList[activeQI].questions[activeQI_Q];
+    if (!Array.isArray(q.answer)) q.answer = [];
+    q.answer.push('');
+    save();
+    renderQuestionEditor();
+  }
+
+  function removeAnswerVariant(ai) {
+    commit();
+    const q = quizList[activeQI].questions[activeQI_Q];
+    if (q.answer.length <= 1) return;
+    q.answer.splice(ai, 1);
+    save();
+    renderQuestionEditor();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Export
+  // ═══════════════════════════════════════════════════════════
+  function generateCode() {
+    commit();
+    const data = quizList.map((quiz, qi) => ({
+      id: quiz.id || `quiz_${qi + 1}`,
+      title: quiz.title || '無題',
+      description: quiz.description || '',
+      icon: quiz.icon || '📝',
+      color: quiz.color || '#4f9eff',
+      questions: (quiz.questions || []).map((q, i) => {
+        const base = {
+          id: i + 1,
+          type: q.type || 'single',
+          question: q.question,
+          answer: q.answer,
+          explanation: q.explanation || '',
+          score: q.score || 10
+        };
+        if (q.image) base.image = q.image;
+        if (q.type === 'single' || q.type === 'multiple') {
+          base.choices = q.choices;
+        }
+        if (q.type === 'input') {
+          base.caseSensitive = q.caseSensitive || false;
+        }
+        return base;
+      })
+    }));
+
+    return `// ============================================================
+//  quiz-data.js — クイズデータファイル
+//  Generated: ${new Date().toLocaleString('ja-JP')}
+// ============================================================
+
+const quizzes = ${JSON.stringify(data, null, 2)};
+`;
+  }
+
+  function openExport() {
+    if (quizList.length === 0) { toast('クイズがありません', 'err'); return; }
+    document.getElementById('export-code').textContent = generateCode();
+    document.getElementById('export-modal').classList.add('open');
+  }
+
+  function closeExport() { document.getElementById('export-modal').classList.remove('open'); }
+
+  function copyExport() {
+    navigator.clipboard.writeText(generateCode()).then(() => toast('✅ コピーしました', 'ok'));
+  }
+
+  function downloadExport() {
+    const blob = new Blob([generateCode()], { type: 'text/javascript' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'quiz-data.js'; a.click();
+    URL.revokeObjectURL(url);
+    toast('💾 ダウンロードしました', 'ok');
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Helpers
+  // ═══════════════════════════════════════════════════════════
+  function esc(s) {
+    return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function toast(msg, type = 'ok') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast ' + type + ' show';
+    setTimeout(() => t.className = 'toast ' + type, 2800);
+  }
+
+  document.getElementById('export-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeExport();
+  });
+
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      commit();
+      toast('✅ 保存しました', 'ok');
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════
+  //  Boot
+  // ═══════════════════════════════════════════════════════════
+  load();
+  renderQuizList();
+  renderQuestionList();
+  if (quizList.length > 0) selectQuiz(0);
+</script>
+</body>
+</html>
