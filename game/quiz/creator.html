@@ -134,24 +134,31 @@
   /* MOBILE RESPONSIVE */
   @media (max-width: 900px) {
     .workspace { 
-      grid-template-columns: 1fr; 
-      position: relative;
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr;
     }
     
-    .pane, .pane-editor { 
+    .pane { 
       display: none;
-      position: absolute;
-      inset: 0;
-      z-index: 10;
+      grid-column: 1;
+      grid-row: 2;
       border: none;
     }
     
-    .pane.mobile-active, .pane-editor.mobile-active { 
+    .pane.mobile-active { 
       display: flex;
       flex-direction: column;
     }
     
+    .pane-editor {
+      display: none;
+      grid-column: 1;
+      grid-row: 2;
+      border: none;
+    }
+    
     .pane-editor.mobile-active {
+      display: block;
       overflow-y: auto;
     }
     
@@ -160,6 +167,8 @@
       display: flex;
       background: var(--s1);
       border-bottom: 1px solid var(--border);
+      grid-column: 1;
+      grid-row: 1;
       position: sticky;
       top: 0;
       z-index: 20;
@@ -250,11 +259,11 @@
 <div class="overlay" id="export-modal">
   <div class="modal">
     <div class="modal-head">
-      <span class="modal-title">📦 quiz-data.js 出力</span>
+      <span class="modal-title">📦 data.js 出力</span>
       <button class="modal-close" onclick="closeExport()">✕</button>
     </div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
-      コードをコピーまたはダウンロードして、<strong style="color:var(--accent)">quiz-data.js</strong> として保存してください。
+      コードをコピーまたはダウンロードして、<strong style="color:var(--accent)">data.js</strong> として保存してください。
     </p>
     <div class="code-area" id="export-code"></div>
     <div class="modal-actions">
@@ -274,12 +283,12 @@
     </div>
     
     <div style="margin-bottom:20px">
-      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">1️⃣ quiz-data.js から自動読み込み</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">1️⃣ data.js から自動読み込み</div>
       <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
-        このHTMLと同じフォルダにある quiz-data.js のデータを読み込みます。
+        このHTMLと同じフォルダにある data.js のデータを読み込みます。
       </p>
       <button class="btn btn-primary" style="width:100%" onclick="importFromDataJS()">
-        📥 quiz-data.js から読み込む
+        📥 data.js から読み込む
       </button>
     </div>
 
@@ -334,7 +343,7 @@
       if (d) {
         quizList = JSON.parse(d);
       } else {
-        // 初回起動時：quiz-data.js から自動インポート
+        // 初回起動時：data.js から自動インポート
         autoImportFromDataJS();
       }
     } catch(e) {}
@@ -344,7 +353,7 @@
     if (typeof quizzes !== 'undefined' && Array.isArray(quizzes) && quizzes.length > 0) {
       quizList = JSON.parse(JSON.stringify(quizzes)); // Deep copy
       save();
-      console.log('✅ quiz-data.js から自動的にインポートしました');
+      console.log('✅ data.js から自動的にインポートしました');
     }
   }
 
@@ -857,7 +866,7 @@
     }));
 
     return `// ============================================================
-//  quiz-data.js — クイズデータファイル
+//  data.js — クイズデータファイル
 //  Generated: ${new Date().toLocaleString('ja-JP')}
 // ============================================================
 
@@ -881,7 +890,7 @@ const quizzes = ${JSON.stringify(data, null, 2)};
     const blob = new Blob([generateCode()], { type: 'text/javascript' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'quiz-data.js'; a.click();
+    a.href = url; a.download = 'data.js'; a.click();
     URL.revokeObjectURL(url);
     toast('💾 ダウンロードしました', 'ok');
   }
@@ -899,11 +908,11 @@ const quizzes = ${JSON.stringify(data, null, 2)};
 
   function importFromDataJS() {
     if (typeof quizzes === 'undefined' || !Array.isArray(quizzes)) {
-      toast('❌ quiz-data.js が見つかりません', 'err');
+      toast('❌ data.js が見つかりません', 'err');
       return;
     }
 
-    if (!confirm('現在の編集内容を破棄して、quiz-data.js から読み込みますか？')) {
+    if (!confirm('現在の編集内容を破棄して、data.js から読み込みますか？')) {
       return;
     }
 
