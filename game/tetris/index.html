@@ -1,42 +1,1425 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>テトリス</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>TETRIS</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+/* ===== LIGHT MODE (default) ===== */
+:root {
+  --bg: #f0f0f5;
+  --panel: #ffffff;
+  --border: #d0d0e0;
+  --accent: #0088aa;
+  --accent2: #cc0055;
+  --accent3: #cc8800;
+  --text: #1a1a2e;
+  --dim: #8888aa;
+  --canvas-bg: #e8e8f0;
+  --grid-line: rgba(0,0,0,0.06);
+  --pause-bg: rgba(240,240,245,0.88);
+}
+
+/* ===== DARK MODE ===== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0a0a0f;
+    --panel: #0f0f1a;
+    --border: #1a1a2e;
+    --accent: #00f5ff;
+    --accent2: #ff006e;
+    --accent3: #ffbe0b;
+    --text: #e0e0ff;
+    --dim: #444466;
+    --canvas-bg: #050508;
+    --grid-line: rgba(255,255,255,0.04);
+    --pause-bg: rgba(10,10,15,0.85);
+  }
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background: radial-gradient(ellipse at 20% 50%, rgba(13,13,80,.15) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 50%, rgba(80,0,40,.12) 0%, transparent 60%);
+  pointer-events:none; z-index:0;
+}
+@media (prefers-color-scheme: dark) {
+  body::before {
+    background: radial-gradient(ellipse at 20% 50%, #0d0d2b 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 50%, #1a0010 0%, transparent 60%);
+  }
+}
+
+/* ========== SCREENS ========== */
+#screen-menu, #screen-game, #screen-over {
+  position:relative; z-index:1;
+  width:100%; max-width:900px;
+  padding: 16px;
+}
+
+/* ========== MENU ========== */
+#screen-menu { text-align:center; }
+
+.logo {
+  font-family:'Orbitron',sans-serif;
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  font-weight:900;
+  letter-spacing: 0.15em;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 50%, var(--accent3) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  animation: logoPulse 3s ease-in-out infinite;
+  margin-bottom: 8px;
+}
+@keyframes logoPulse {
+  0%,100%{filter:brightness(1)} 50%{filter:brightness(1.3)}
+}
+
+.menu-subtitle { color:var(--dim); font-size:.85rem; letter-spacing:.2em; margin-bottom:40px; }
+
+.mode-grid {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap:12px; margin-bottom:32px;
+}
+
+.mode-btn {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family:'Share Tech Mono',monospace;
+  font-size:.9rem;
+  padding:20px 12px;
+  cursor:pointer;
+  transition: all .2s;
+  border-radius:4px;
+  position:relative; overflow:hidden;
+}
+.mode-btn::before {
+  content:''; position:absolute; inset:0;
+  background: linear-gradient(135deg, var(--accent) 0%, transparent 100%);
+  opacity:0; transition: opacity .2s;
+}
+.mode-btn:hover::before { opacity:.08; }
+.mode-btn:hover { border-color: var(--accent); color: var(--accent); transform:translateY(-2px); }
+.mode-btn.active { border-color:var(--accent); color:var(--accent); box-shadow:0 0 12px rgba(0,245,255,.2); }
+
+.mode-btn .mode-icon { font-size:1.8rem; display:block; margin-bottom:8px; }
+.mode-btn .mode-name { font-weight:700; display:block; margin-bottom:4px; }
+.mode-btn .mode-desc { font-size:.72rem; color:var(--dim); display:block; }
+.mode-btn .mode-best { font-size:.68rem; color:var(--accent3); display:block; margin-top:4px; min-height:.9em; }
+
+/* Mino selector */
+#mino-selector { display:none; margin-bottom:20px; }
+#mino-selector.visible { display:flex; justify-content:center; gap:8px; flex-wrap:wrap; }
+
+.mino-select-btn {
+  width:40px; height:40px;
+  border:2px solid var(--border);
+  background:var(--panel);
+  cursor:pointer; border-radius:4px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Orbitron',sans-serif; font-weight:700; font-size:1.1rem;
+  transition:all .2s;
+}
+.mino-select-btn.selected { border-color:var(--accent); box-shadow:0 0 8px rgba(0,245,255,.3); }
+
+.start-btn {
+  background: linear-gradient(135deg, var(--accent) 0%, #0099aa 100%);
+  border:none; color:#000;
+  font-family:'Orbitron',sans-serif; font-weight:700;
+  font-size:1rem; letter-spacing:.15em;
+  padding:16px 48px; cursor:pointer;
+  border-radius:4px; transition:all .2s;
+}
+.start-btn:hover { transform:translateY(-2px); box-shadow:0 4px 20px rgba(0,245,255,.4); }
+
+/* ========== GAME SCREEN ========== */
+#screen-game { display:none; }
+
+.game-layout {
+  display:flex; gap:16px; align-items:flex-start; justify-content:center;
+}
+
+/* Side panels */
+.side-panel {
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:4px;
+  padding:12px;
+  min-width:120px;
+}
+.panel-label {
+  font-family:'Orbitron',sans-serif;
+  font-size:.6rem; letter-spacing:.2em;
+  color:var(--dim); margin-bottom:8px;
+}
+.panel-value {
+  font-family:'Orbitron',sans-serif;
+  font-size:1.2rem; font-weight:700;
+  color:var(--accent);
+}
+
+/* Canvas wrapper */
+.canvas-wrap {
+  position:relative;
+  border:1px solid var(--border);
+  border-radius:4px;
+  overflow:hidden;
+  flex-shrink:0;
+}
+
+#gameCanvas { display:block; }
+
+/* Overlay effects */
+.effect-overlay {
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  pointer-events:none;
+}
+#effect-text {
+  font-family:'Orbitron',sans-serif;
+  font-size:2rem; font-weight:900;
+  color:var(--accent3);
+  text-shadow:0 0 20px var(--accent3);
+  opacity:0;
+  transform:scale(.5);
+  transition:none;
+  text-align:center;
+  white-space:pre-line;
+  line-height:1.2;
+}
+#effect-text.show {
+  animation: effectAnim .8s ease-out forwards;
+}
+@keyframes effectAnim {
+  0%{opacity:1;transform:scale(1.2)}
+  60%{opacity:1;transform:scale(1)}
+  100%{opacity:0;transform:scale(.8) translateY(-20px)}
+}
+
+/* Pause overlay */
+#pause-overlay {
+  position:absolute; inset:0;
+  background:var(--pause-bg);
+  display:none; align-items:center; justify-content:center;
+  font-family:'Orbitron',sans-serif;
+  font-size:2rem; font-weight:900;
+  color:var(--accent);
+  letter-spacing:.2em;
+}
+#pause-overlay.visible { display:flex; }
+
+/* Mini/preview canvas */
+.mini-canvas-wrap { margin-bottom:12px; }
+.mini-canvas-wrap canvas { display:block; }
+
+/* ========== GAME OVER ========== */
+#screen-over {
+  display:none; text-align:center;
+}
+.over-title {
+  font-family:'Orbitron',sans-serif;
+  font-size:clamp(2rem,8vw,4rem); font-weight:900;
+  color:var(--accent2);
+  text-shadow:0 0 30px var(--accent2);
+  margin-bottom:24px;
+}
+.over-stats {
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:4px; padding:24px; margin-bottom:24px;
+  display:inline-block; min-width:280px;
+}
+.stat-row { display:flex; justify-content:space-between; gap:40px; margin-bottom:8px; }
+.stat-label { color:var(--dim); }
+.stat-val { color:var(--accent); font-weight:700; }
+.over-btns { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+.over-btn {
+  background:var(--panel); border:1px solid var(--border);
+  color:var(--text); font-family:'Share Tech Mono',monospace;
+  padding:12px 28px; cursor:pointer; border-radius:4px;
+  transition:all .2s;
+}
+.over-btn:hover { border-color:var(--accent); color:var(--accent); }
+.over-btn.primary { border-color:var(--accent); color:var(--accent); }
+
+/* ========== MOBILE CONTROLS ========== */
+#mobile-controls {
+  display:none;
+  width:100%; max-width:480px;
+  margin-top:12px;
+}
+@media (hover:none) and (pointer:coarse) {
+  #mobile-controls { display:flex; flex-direction:column; gap:8px; }
+}
+
+.ctrl-row { display:flex; gap:6px; justify-content:center; }
+
+.ctrl-btn {
+  background:var(--panel);
+  border:1px solid var(--border);
+  color:var(--text);
+  font-family:'Orbitron',sans-serif; font-weight:700;
+  font-size:.85rem; padding:14px 10px;
+  min-width:52px; min-height:52px;
+  border-radius:6px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  flex-direction:column; gap:2px;
+  transition:background .1s;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+.ctrl-btn:active { background:#1a1a33; border-color:var(--accent); }
+.ctrl-btn .ctrl-label { font-size:.6rem; color:var(--dim); }
+
+/* Timer bar (タイムアタック) */
+#timer-bar-wrap {
+  width:100%; height:6px;
+  background:var(--border); border-radius:3px;
+  margin-top:8px; overflow:hidden; display:none;
+}
+#timer-bar { height:100%; width:100%; background:var(--accent); transition:width .1s linear; border-radius:3px; }
+
+/* Score popup */
+.score-popup {
+  position:absolute;
+  font-family:'Orbitron',sans-serif;
+  font-weight:700; font-size:.9rem;
+  color:var(--accent3);
+  pointer-events:none;
+  animation:scoreFloat 1s ease-out forwards;
+  z-index:10;
+  text-shadow: 0 1px 4px rgba(0,0,0,.3);
+}
+@keyframes scoreFloat {
+  0%{opacity:1;transform:translateY(0)}
+  100%{opacity:0;transform:translateY(-60px)}
+}
+
+/* REN indicator */
+#ren-display {
+  font-family:'Orbitron',sans-serif;
+  font-size:.8rem; color:var(--accent2);
+  min-height:20px;
+  text-align:center;
+}
+
+/* line clear flash */
+@keyframes flashRow { 0%,100%{opacity:1} 50%{opacity:.2} }
+</style>
 </head>
 <body>
-  <div class="container">
-    <canvas id="board" width="300" height="600"></canvas>
-    <div class="sidebar">
-      <h2>Next</h2>
-      <div id="next-container">
-        <canvas id="next0" width="120" height="120"></canvas>
-        <canvas id="next1" width="80" height="80"></canvas>
-        <canvas id="next2" width="64" height="64"></canvas>
-        <canvas id="next3" width="50" height="50"></canvas>
-        <canvas id="next4" width="40" height="40"></canvas>
-      </div>
 
-      <h2>Hold</h2>
-      <canvas id="hold" width="120" height="120"></canvas>
+<!-- ========== MENU ========== -->
+<div id="screen-menu">
+  <div class="logo">TETRIS</div>
+  <div class="menu-subtitle">[ SELECT MODE ]</div>
 
-      <div id="score-box">SCORE: <span id="score">0</span></div>
+  <div class="mode-grid">
+    <button class="mode-btn" data-mode="normal">
+      <span class="mode-icon">🎮</span>
+      <span class="mode-name">NORMAL</span>
+      <span class="mode-desc">普通のテトリス</span>
+      <span class="mode-best" id="best-normal"></span>
+    </button>
+    <button class="mode-btn" data-mode="line10">
+      <span class="mode-icon">⚡</span>
+      <span class="mode-name">10 LINE</span>
+      <span class="mode-desc">タイムアタック</span>
+      <span class="mode-best" id="best-line10"></span>
+    </button>
+    <button class="mode-btn" data-mode="line100">
+      <span class="mode-icon">🏆</span>
+      <span class="mode-name">100 LINE</span>
+      <span class="mode-desc">タイムアタック</span>
+      <span class="mode-best" id="best-line100"></span>
+    </button>
+    <button class="mode-btn" data-mode="mino-only">
+      <span class="mode-icon">🧩</span>
+      <span class="mode-name">MINO ONLY</span>
+      <span class="mode-desc">特定ミノのみ</span>
+      <span class="mode-best" id="best-mino-only"></span>
+    </button>
+    <button class="mode-btn" data-mode="mini">
+      <span class="mode-icon">🔬</span>
+      <span class="mode-name">MINI</span>
+      <span class="mode-desc">50×100マス</span>
+      <span class="mode-best" id="best-mini"></span>
+    </button>
+  </div>
 
-      <div class="controls">
-        <h3>操作方法</h3>
-        <ul>
-          <li>← / → : 左右移動</li>
-          <li>↓ : ソフトドロップ</li>
-          <li>↑ / X : 右回転</li>
-          <li>Z : 左回転</li>
-          <li>スペース : ハードドロップ</li>
-          <li>Shift / C : ホールド</li>
-        </ul>
+  <div id="mino-selector"></div>
+
+  <button class="start-btn" id="start-btn">START GAME</button>
+</div>
+
+<!-- ========== GAME ========== -->
+<div id="screen-game">
+  <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
+  <div class="game-layout" id="game-layout">
+    <!-- left panel -->
+    <div class="side-panel" id="left-panel">
+      <div class="panel-label">HOLD</div>
+      <div class="mini-canvas-wrap"><canvas id="holdCanvas"></canvas></div>
+      <div class="panel-label" style="margin-top:16px">SCORE</div>
+      <div class="panel-value" id="scoreDisplay">0</div>
+      <div class="panel-label" style="margin-top:12px">LINES</div>
+      <div class="panel-value" id="linesDisplay">0</div>
+      <div class="panel-label" style="margin-top:12px">MODE</div>
+      <div class="panel-value" id="modeDisplay" style="font-size:.7rem;color:var(--dim)">-</div>
+      <div style="margin-top:12px" id="ren-display"></div>
+    </div>
+
+    <!-- main canvas -->
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <div class="canvas-wrap" id="canvas-wrap">
+        <canvas id="gameCanvas"></canvas>
+        <div class="effect-overlay"><div id="effect-text"></div></div>
+        <div id="pause-overlay">PAUSE</div>
       </div>
     </div>
+
+    <!-- right panel -->
+    <div class="side-panel" id="right-panel">
+      <div class="panel-label">NEXT</div>
+      <canvas id="nextCanvas"></canvas>
+    </div>
   </div>
-  <script src="script.js"></script>
+
+  <!-- mobile buttons -->
+  <div id="mobile-controls">
+    <div class="ctrl-row">
+      <button class="ctrl-btn" id="btn-hold">HOLD<span class="ctrl-label">Q</span></button>
+      <button class="ctrl-btn" id="btn-harddrop">▼▼<span class="ctrl-label">HARD DROP</span></button>
+      <button class="ctrl-btn" id="btn-rotR">↻<span class="ctrl-label">ROT R</span></button>
+      <button class="ctrl-btn" id="btn-rotL">↺<span class="ctrl-label">ROT L</span></button>
+    </div>
+    <div class="ctrl-row">
+      <button class="ctrl-btn" id="btn-left">◀<span class="ctrl-label">LEFT</span></button>
+      <button class="ctrl-btn" id="btn-softdrop">▼<span class="ctrl-label">SOFT</span></button>
+      <button class="ctrl-btn" id="btn-right">▶<span class="ctrl-label">RIGHT</span></button>
+    </div>
+    <div class="ctrl-row">
+      <button class="ctrl-btn" id="btn-pause" style="min-width:120px">⏸ PAUSE</button>
+      <button class="ctrl-btn" id="btn-quit" style="min-width:80px">QUIT</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== GAME OVER ========== -->
+<div id="screen-over">
+  <div class="over-title" id="over-title">GAME OVER</div>
+  <div class="over-stats">
+    <div class="stat-row"><span class="stat-label">SCORE</span><span class="stat-val" id="stat-score">0</span></div>
+    <div class="stat-row"><span class="stat-label">BEST</span><span class="stat-val" id="stat-best" style="color:var(--accent3)">-</span></div>
+    <div class="stat-row"><span class="stat-label">LINES</span><span class="stat-val" id="stat-lines">0</span></div>
+    <div class="stat-row"><span class="stat-label">TIME</span><span class="stat-val" id="stat-time">0:00</span></div>
+    <div class="stat-row" id="stat-mode-row"><span class="stat-label">MODE</span><span class="stat-val" id="stat-mode">-</span></div>
+  </div>
+  <div class="over-btns">
+    <button class="over-btn primary" id="retry-btn">RETRY</button>
+    <button class="over-btn" id="menu-btn">MENU</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  TETRIS ENGINE
+// ============================================================
+
+const COLS_NORMAL = 10;
+const ROWS_NORMAL = 20;
+const COLS_MINI   = 50;
+const ROWS_MINI   = 100;
+
+// ========== TETROMINOS ==========
+// Standard SRS pieces (spawn coords, 4 rotations each)
+const TETROMINOES = {
+  I: {
+    color: '#00f5ff',
+    shapes: [
+      [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+      [[0,0,1,0],[0,0,1,0],[0,0,1,0],[0,0,1,0]],
+      [[0,0,0,0],[0,0,0,0],[1,1,1,1],[0,0,0,0]],
+      [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]],
+    ]
+  },
+  O: {
+    color: '#ffbe0b',
+    shapes: [
+      [[1,1],[1,1]],
+      [[1,1],[1,1]],
+      [[1,1],[1,1]],
+      [[1,1],[1,1]],
+    ]
+  },
+  T: {
+    color: '#d500f9',
+    shapes: [
+      [[0,1,0],[1,1,1],[0,0,0]],
+      [[0,1,0],[0,1,1],[0,1,0]],
+      [[0,0,0],[1,1,1],[0,1,0]],
+      [[0,1,0],[1,1,0],[0,1,0]],
+    ]
+  },
+  S: {
+    color: '#69ff47',
+    shapes: [
+      [[0,1,1],[1,1,0],[0,0,0]],
+      [[0,1,0],[0,1,1],[0,0,1]],
+      [[0,0,0],[0,1,1],[1,1,0]],
+      [[1,0,0],[1,1,0],[0,1,0]],
+    ]
+  },
+  Z: {
+    color: '#ff006e',
+    shapes: [
+      [[1,1,0],[0,1,1],[0,0,0]],
+      [[0,0,1],[0,1,1],[0,1,0]],
+      [[0,0,0],[1,1,0],[0,1,1]],
+      [[0,1,0],[1,1,0],[1,0,0]],
+    ]
+  },
+  J: {
+    color: '#0044ff',
+    shapes: [
+      [[1,0,0],[1,1,1],[0,0,0]],
+      [[0,1,1],[0,1,0],[0,1,0]],
+      [[0,0,0],[1,1,1],[0,0,1]],
+      [[0,1,0],[0,1,0],[1,1,0]],
+    ]
+  },
+  L: {
+    color: '#ff8c00',
+    shapes: [
+      [[0,0,1],[1,1,1],[0,0,0]],
+      [[0,1,0],[0,1,0],[0,1,1]],
+      [[0,0,0],[1,1,1],[1,0,0]],
+      [[1,1,0],[0,1,0],[0,1,0]],
+    ]
+  },
+};
+
+const PIECE_KEYS = ['I','O','T','S','Z','J','L'];
+
+// SRS wall kicks – JLSZT pieces
+const SRS_KICKS = {
+  '0>1': [[-1,0],[-1,1],[0,-2],[-1,-2]],
+  '1>0': [[1,0],[1,-1],[0,2],[1,2]],
+  '1>2': [[1,0],[1,-1],[0,2],[1,2]],
+  '2>1': [[-1,0],[-1,1],[0,-2],[-1,-2]],
+  '2>3': [[1,0],[1,1],[0,-2],[1,-2]],
+  '3>2': [[-1,0],[-1,-1],[0,2],[-1,2]],
+  '3>0': [[-1,0],[-1,-1],[0,2],[-1,2]],
+  '0>3': [[1,0],[1,1],[0,-2],[1,-2]],
+};
+// SRS I kicks
+const SRS_I_KICKS = {
+  '0>1': [[-2,0],[1,0],[-2,-1],[1,2]],
+  '1>0': [[2,0],[-1,0],[2,1],[-1,-2]],
+  '1>2': [[-1,0],[2,0],[-1,2],[2,-1]],
+  '2>1': [[1,0],[-2,0],[1,-2],[-2,1]],
+  '2>3': [[2,0],[-1,0],[2,1],[-1,-2]],
+  '3>2': [[-2,0],[1,0],[-2,-1],[1,2]],
+  '3>0': [[1,0],[-2,0],[1,-2],[-2,1]],
+  '0>3': [[-1,0],[2,0],[-1,2],[2,-1]],
+};
+
+// ============================================================
+//  GAME STATE
+// ============================================================
+let game = null;
+
+class TetrisGame {
+  constructor(mode, minoOnly) {
+    this.mode      = mode;        // 'normal'|'line10'|'line100'|'mino-only'|'mini'
+    this.minoOnly  = minoOnly;    // array of keys for mino-only mode
+
+    this.cols = (mode==='mini') ? COLS_MINI : COLS_NORMAL;
+    this.rows = (mode==='mini') ? ROWS_MINI : ROWS_NORMAL;
+    this.cell = (mode==='mini') ? 6 : 30;
+
+    this.board   = this.emptyBoard();
+    this.score   = 0;
+    this.lines   = 0;
+    this.ren     = -1; // starts at -1; first clear = 0 REN
+    this.paused  = false;
+    this.over    = false;
+    this.won     = false;
+    this.startTime = Date.now();
+    this.elapsed   = 0;
+
+    this.bag     = [];
+    this.current = null;
+    this.holdKey  = null;
+    this.holdUsed= false;
+    this.nextPieces = [];
+    this.nextCount  = (mode==='mini') ? 1 : 3;
+
+    // O-spin easter egg
+    this.oSpinActive   = false;
+    this.oSpinTimer    = null;
+    this.oSpinRotCount = 0;
+    this.oSpinStart    = 0;
+    this.oSpinMorphed  = false;
+
+    this.dropInterval = 800; // ms per row
+    this.lastDrop     = 0;
+    this.softDropping = false;
+    this.lastMoveRotation = false; // T-spin判定用: 最後の操作が回転かどうか
+
+    this.animId = null;
+    this.flashRows = [];
+    this.flashTimer = 0;
+
+    // 7-bag init
+    for(let i=0;i<2;i++) this.fillBag();
+    for(let i=0;i<this.nextCount;i++) this.nextPieces.push(this.drawNext());
+
+    this.spawn();
+    this.setupCanvases();
+    this.bindInput();
+    this.loop(0);
+  }
+
+  emptyBoard() {
+    return Array.from({length: this.rows}, () => new Array(this.cols).fill(null));
+  }
+
+  fillBag() {
+    const keys = this.minoOnly.length ? [...this.minoOnly] : [...PIECE_KEYS];
+    // shuffle
+    for(let i=keys.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [keys[i],keys[j]]=[keys[j],keys[i]];
+    }
+    this.bag.push(...keys);
+  }
+
+  drawNext() {
+    if(this.bag.length < 7) this.fillBag();
+    return this.bag.shift();
+  }
+
+  spawn() {
+    const key = this.nextPieces.shift();
+    this.nextPieces.push(this.drawNext());
+
+    const def = TETROMINOES[key];
+    const shape = def.shapes[0];
+    const spawnX = Math.floor((this.cols - shape[0].length) / 2);
+    // ガイドライン: スポーン行はy=0（可視領域最上段）
+    // ただしIミノなど上1行が空の場合はy=-1から試みてブロックと重ならなければy=0に
+    const spawnY = 0;
+
+    this.current = { key, rot:0, x:spawnX, y:spawnY };
+    this.holdUsed = false;
+    this.lastMoveRotation = false;
+    this.lastKickIndex = 0;
+
+    if(key==='O') {
+      this.oSpinActive   = true;
+      this.oSpinRotCount = 0;
+      this.oSpinStart    = Date.now();
+      this.oSpinMorphed  = false;
+    } else {
+      this.oSpinActive   = false;
+      this.oSpinMorphed  = false;
+    }
+
+    // Block Out: スポーン位置で既存ブロックと重なる → ゲームオーバー
+    if(!this.validPos(this.current, 0, 0)) {
+      this.over = true;
+    }
+  }
+
+  shape(p) {
+    return TETROMINOES[p.key].shapes[p.rot];
+  }
+
+  cells(p) {
+    const s = this.shape(p);
+    const result = [];
+    for(let r=0;r<s.length;r++)
+      for(let c=0;c<s[r].length;c++)
+        if(s[r][c]) result.push({r: p.y+r, c: p.x+c});
+    return result;
+  }
+
+  validPos(p, dx=0, dy=0, rot=null) {
+    const s = rot!==null ? TETROMINOES[p.key].shapes[rot] : this.shape(p);
+    for(let r=0;r<s.length;r++)
+      for(let c=0;c<s[r].length;c++) {
+        if(!s[r][c]) continue;
+        const nr=p.y+dy+r, nc=p.x+dx+c;
+        if(nc<0||nc>=this.cols||nr>=this.rows) return false;
+        if(nr>=0 && this.board[nr][nc]) return false;
+      }
+    return true;
+  }
+
+  tryRotate(dir) { // dir: 1=right, -1=left
+    const p = this.current;
+    const newRot = ((p.rot + dir) % 4 + 4) % 4;
+    const key = `${p.rot}>${newRot}`;
+
+    // O-spin tracking
+    if(p.key==='O') {
+      if(!this.oSpinMorphed) {
+        this.oSpinRotCount++;
+        const elapsed = (Date.now() - this.oSpinStart)/1000;
+        if(elapsed>0 && this.oSpinRotCount/elapsed >= 10) {
+          this.morphOtoI();
+          return;
+        }
+      }
+    }
+
+    // No kick for O
+    if(p.key==='O') {
+      if(this.validPos(p,0,0,newRot)) { p.rot=newRot; this.lastMoveRotation=true; return true; }
+      return false;
+    }
+
+    const kicks = p.key==='I' ? SRS_I_KICKS[key] : SRS_KICKS[key];
+    if(!kicks) return false;
+
+    // Try base first (kick index 0 = no kick)
+    if(this.validPos(p,0,0,newRot)) {
+      p.rot=newRot;
+      this.lastMoveRotation=true;
+      this.lastKickIndex=0;
+      return true;
+    }
+
+    for(let i=0;i<kicks.length;i++) {
+      const [kx,ky]=kicks[i];
+      if(this.validPos(p,kx,-ky,newRot)) {
+        p.x+=kx; p.y+=-ky; p.rot=newRot;
+        this.lastMoveRotation=true;
+        this.lastKickIndex=i+1; // 1-indexed kick
+        return true;
+      }
+    }
+    return false;
+  }
+
+  morphOtoI() {
+    // Secret: O-spin at 10rps transforms O into I
+    this.oSpinMorphed = true;
+    this.oSpinActive  = false;
+    const p = this.current;
+    const ox = p.x, oy = p.y;
+    p.key = 'I';
+    p.rot = 0;
+    // Adjust position so it roughly replaces the O
+    p.x = ox - 1;
+    if(!this.validPos(p,0,0)) p.x = ox;
+    if(!this.validPos(p,0,0)) { p.key='O'; p.rot=0; p.x=ox; p.y=oy; this.oSpinMorphed=false; }
+    // No announcement to keep it hidden
+  }
+
+  hardDrop() {
+    let dy=0;
+    while(this.validPos(this.current,0,dy+1)) dy++;
+    this.current.y += dy;
+    this.score += dy * 2;
+    this.lastMoveRotation=false;
+    this.lock();
+  }
+
+  softDrop() {
+    if(this.clearing) return false;
+    if(this.validPos(this.current,0,1)) {
+      this.current.y++;
+      this.score+=1;
+      this.lastMoveRotation=false;
+      return true;
+    }
+    return false;
+  }
+
+  ghostY() {
+    let dy=0;
+    while(this.validPos(this.current,0,dy+1)) dy++;
+    return this.current.y+dy;
+  }
+
+  lock() {
+    const p = this.current;
+    const cs = this.cells(p);
+
+    const tspin = (p.key==='T') ? this.checkTSpin() : null;
+
+    // Lock Out: ピースの全セルが可視フィールド外（y < 0）でロック → ゲームオーバー
+    const allAbove = cs.every(({r}) => r < 0);
+    if(allAbove) {
+      this.over = true;
+      return;
+    }
+
+    cs.forEach(({r,c})=>{ if(r>=0) this.board[r][c] = TETROMINOES[p.key].color; });
+
+    this.oSpinActive=false; this.oSpinRotCount=0; this.oSpinMorphed=false;
+
+    // 消えるライン検出
+    const clearedRows = [];
+    for(let r=0;r<this.rows;r++){
+      if(this.board[r].every(c=>c!==null)) clearedRows.push(r);
+    }
+
+    if(clearedRows.length>0){
+      this.current = null;
+      this.clearing = {
+        rows: clearedRows,
+        col: this.cols-1,
+        msPerCol: 50/this.cols,
+        lastTick: performance.now(),
+        tspin,
+        count: clearedRows.length,
+      };
+    } else {
+      this.scoring(0, null);
+      this.lastDrop = performance.now();
+      if(!this.over) this.spawn();
+    }
+  }
+
+  checkTSpin() {
+    const p = this.current;
+    if(p.key!=='T') return null;
+
+    // 条件1: 最後の操作が回転であること
+    if(!this.lastMoveRotation) return null;
+
+    // Tミノの中心は (p.y+1, p.x+1)
+    // 4隅 = 中心±1の対角
+    const corners = [
+      [p.y,   p.x  ],  // 左上 (index 0)
+      [p.y,   p.x+2],  // 右上 (index 1)
+      [p.y+2, p.x  ],  // 左下 (index 2)
+      [p.y+2, p.x+2],  // 右下 (index 3)
+    ];
+
+    const occ = corners.map(([r,c]) =>
+      r<0 || r>=this.rows || c<0 || c>=this.cols || this.board[r][c] ? 1 : 0
+    );
+    const totalOcc = occ.reduce((a,b)=>a+b,0);
+
+    // 条件2: 4隅のうち3つ以上が埋まっている
+    if(totalOcc < 3) return null;
+
+    // 前面コーナー (Tの突き出し方向側の2隅)
+    // rot0=上向き: 上2隅=[0,1], rot1=右向き: 右2隅=[1,3], rot2=下向き: 下2隅=[2,3], rot3=左向き: 左2隅=[0,2]
+    const frontIdx = { 0:[0,1], 1:[1,3], 2:[2,3], 3:[0,2] };
+    const fi = frontIdx[p.rot];
+    const frontOcc = occ[fi[0]] + occ[fi[1]];
+
+    // SRS T-spin triple kick例外: kick index 4 (0-indexed: 3) は常に正T-spin
+    // (0>1 or 2>3 の5番目kickテスト)
+    const isTstKick = this.lastKickIndex === 4;
+
+    if(frontOcc === 2 || isTstKick) {
+      return 'T-Spin';
+    } else {
+      // frontOcc===1: Mini
+      return 'T-Spin Mini';
+    }
+  }
+
+  clearLines(rows) {
+    // アニメーション完了後に呼ばれる: boardから該当行を削除して詰める
+    for(let i=rows.length-1;i>=0;i--) this.board.splice(rows[i],1);
+    for(let i=0;i<rows.length;i++) this.board.unshift(new Array(this.cols).fill(null));
+    this.lines += rows.length;
+  }
+
+  scoring(cleared, tspin) {
+    if(cleared===0) {
+      this.ren = -1;
+      updateRen(this.ren);
+      return;
+    }
+
+    let pts = 0;
+    let label = '';
+
+    if(cleared===4) { pts=500; label='TETRIS!'; }
+    else if(cleared===3) { pts=300; label='TRIPLE'; }
+    else if(cleared===2) { pts=200; label='DOUBLE'; }
+    else { pts=100; label='SINGLE'; }
+
+    if(tspin) {
+      pts = Math.round(pts * 1.5);
+      label = tspin + '\n' + label;
+    }
+
+    this.ren++;
+    if(this.ren>0) {
+      pts += this.ren * 100;
+      label += '\n' + this.ren + ' REN!';
+    }
+
+    this.score += pts;
+    updateRen(this.ren);
+    showEffect(label, tspin || cleared===4);
+    showScorePopup('+'+pts);
+
+    if(this.mode==='line10'  && this.lines>=10)  this.complete();
+    if(this.mode==='line100' && this.lines>=100) this.complete();
+  }
+
+  complete() {
+    this.won = true;
+    this.over = true;
+  }
+
+  hold() {
+    if(this.holdUsed) return;
+    if(this.clearing) return;
+    if(!this.current) return;
+
+    const fromKey = this.current.key;
+    const toKey   = this.holdKey; // nullか前回HOLDしたキー
+
+    // HOLDに今のピースを保存
+    this.holdKey = fromKey;
+    this.holdUsed = true;
+
+    this.lastMoveRotation = false;
+    this.lastKickIndex = 0;
+    this.oSpinActive = false;
+    this.oSpinMorphed = false;
+
+    if(toKey) {
+      // HOLDから出す
+      const def = TETROMINOES[toKey];
+      const shape = def.shapes[0];
+      this.current = {
+        key: toKey, rot:0,
+        x: Math.floor((this.cols - shape[0].length) / 2),
+        y: 0,
+      };
+      if(toKey==='O'){
+        this.oSpinActive=true; this.oSpinRotCount=0;
+        this.oSpinStart=Date.now(); this.oSpinMorphed=false;
+      }
+      // holdUsed=true のまま。このピースがロックされてspawn()が呼ばれたときにfalseになる
+    } else {
+      // 初回HOLD: NEXTから新しいピースを出す
+      // spawn()はholdUsed=falseにするので、先にtrueを設定してからspawnは呼ばず手動でセット
+      const key = this.nextPieces.shift();
+      this.nextPieces.push(this.drawNext());
+      const def = TETROMINOES[key];
+      const shape = def.shapes[0];
+      this.current = {
+        key, rot:0,
+        x: Math.floor((this.cols - shape[0].length) / 2),
+        y: 0,
+      };
+      if(key==='O'){
+        this.oSpinActive=true; this.oSpinRotCount=0;
+        this.oSpinStart=Date.now(); this.oSpinMorphed=false;
+      }
+      // holdUsed=true のまま維持
+    }
+
+    if(!this.validPos(this.current,0,0)) {
+      this.over=true;
+    }
+  }
+
+  setupCanvases() {
+    const gc = document.getElementById('gameCanvas');
+    gc.width  = this.cols * this.cell;
+    gc.height = this.rows * this.cell;
+    this.ctx  = gc.getContext('2d');
+
+    // Hold canvas
+    const hc = document.getElementById('holdCanvas');
+    const hSize = this.mode==='mini'?24:80;
+    hc.width=hSize; hc.height=hSize;
+    this.hctx = hc.getContext('2d');
+
+    // Next canvas
+    const nc = document.getElementById('nextCanvas');
+    const nCell = this.mode==='mini'?6:20;
+    const nH = Math.max(4,4*this.nextCount)*nCell + this.nextCount*8;
+    nc.width = 4*nCell; nc.height = nH;
+    this.nctx = nc.getContext('2d');
+    this.nCell = nCell;
+
+    // Timer bar
+    const tw = document.getElementById('timer-bar-wrap');
+    if(this.mode==='line10'||this.mode==='line100') tw.style.display='block';
+  }
+
+  bindInput() {
+    this._keydown = (e) => {
+      if(this.over) return;
+      const k = e.key;
+      switch(k) {
+        case 'ArrowLeft':  case 'a': e.preventDefault(); this.moveH(-1); break;
+        case 'ArrowRight': case 'd': e.preventDefault(); this.moveH(1);  break;
+        case 'ArrowDown':  case 's': e.preventDefault(); this.softDropping=true; break;
+        case 'ArrowUp':    case 'w': e.preventDefault(); this.hardDrop(); break;
+        case 'z': case 'Z': e.preventDefault(); this.tryRotate(1);  break;
+        case 'x': case 'X': e.preventDefault(); this.tryRotate(-1); break;
+        case 'q': case 'Q': e.preventDefault(); this.hold(); break;
+        case 'Escape': case 'p': case 'P': this.togglePause(); break;
+      }
+    };
+    this._keyup = (e) => {
+      if(e.key==='ArrowDown'||e.key==='s') this.softDropping=false;
+    };
+    document.addEventListener('keydown', this._keydown);
+    document.addEventListener('keyup',   this._keyup);
+
+    // Mobile
+    const bind = (id, action) => {
+      const el = document.getElementById(id);
+      if(!el) return;
+      const start = ()=>{ if(!this.over&&!this.paused) action(); };
+      el.addEventListener('touchstart', e=>{ e.preventDefault(); start(); }, {passive:false});
+      el.addEventListener('mousedown', start);
+    };
+
+    bind('btn-left',     ()=>this.moveH(-1));
+    bind('btn-right',    ()=>this.moveH(1));
+    bind('btn-softdrop', ()=>this.softDrop());
+    bind('btn-harddrop', ()=>this.hardDrop());
+    bind('btn-rotR',     ()=>this.tryRotate(1));
+    bind('btn-rotL',     ()=>this.tryRotate(-1));
+    bind('btn-hold',     ()=>this.hold());
+    bind('btn-pause',    ()=>this.togglePause());
+    bind('btn-quit',     ()=>this.endGame());
+
+    // Soft-drop continuous on mobile
+    let softInterval = null;
+    const sdBtn = document.getElementById('btn-softdrop');
+    if(sdBtn) {
+      sdBtn.addEventListener('touchstart', ()=>{ softInterval=setInterval(()=>this.softDrop(),80); },{passive:true});
+      sdBtn.addEventListener('touchend',   ()=>{ clearInterval(softInterval); });
+    }
+  }
+
+  moveH(dx) {
+    if(this.paused||this.over) return;
+    if(this.validPos(this.current,dx,0)) {
+      this.current.x+=dx;
+      this.lastMoveRotation=false;
+    }
+  }
+
+  togglePause() {
+    this.paused = !this.paused;
+    document.getElementById('pause-overlay').classList.toggle('visible', this.paused);
+    if(!this.paused) this.lastDrop = performance.now();
+  }
+
+  endGame() {
+    this.over = true;
+  }
+
+  loop(ts) {
+    if(this.over) {
+      this.cleanup();
+      showGameOver(this);
+      return;
+    }
+
+    // ライン消去アニメーション中
+    if(this.clearing) {
+      const cl = this.clearing;
+      const now = performance.now();
+      if(now - cl.lastTick >= cl.msPerCol) {
+        cl.lastTick = now;
+        // 今の列を消す
+        cl.rows.forEach(r=>{ if(this.board[r][cl.col]!==undefined) this.board[r][cl.col]=null; });
+        cl.col--;
+        if(cl.col < 0) {
+          // アニメーション完了
+          const { count, tspin, rows } = cl;
+          this.clearing = null;
+          this.clearLines(rows);
+          this.scoring(count, tspin);
+          this.lastDrop = performance.now();
+          if(!this.over) this.spawn();
+        }
+      }
+      this.render();
+      this.animId = requestAnimationFrame(t=>this.loop(t));
+      return;
+    }
+
+    if(!this.paused) {
+      const interval = this.softDropping ? 50 : this.dropInterval;
+      if(ts - this.lastDrop > interval) {
+        if(!this.validPos(this.current,0,1)) {
+          this.lock();
+        } else {
+          this.current.y++;
+          if(this.softDropping) this.score+=1;
+          this.lastMoveRotation=false;
+        }
+        this.lastDrop = ts;
+      }
+      this.elapsed = Date.now() - this.startTime;
+      this.updateTimerBar();
+    }
+    this.render();
+    this.animId = requestAnimationFrame(t=>this.loop(t));
+  }
+
+  updateTimerBar() {
+    const bar = document.getElementById('timer-bar');
+    if(this.mode==='line10') {
+      const pct = Math.min(this.lines/10,1)*100;
+      bar.style.width = pct+'%';
+    } else if(this.mode==='line100') {
+      const pct = Math.min(this.lines/100,1)*100;
+      bar.style.width = pct+'%';
+    }
+  }
+
+  cleanup() {
+    document.removeEventListener('keydown', this._keydown);
+    document.removeEventListener('keyup',   this._keyup);
+    if(this.oSpinTimer) clearInterval(this.oSpinTimer);
+  }
+
+  // ========== RENDER ==========
+  render() {
+    const { ctx, cell, cols, rows } = this;
+
+    // Background
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#050508';
+    ctx.fillRect(0,0,cols*cell,rows*cell);
+
+    // Grid
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid-line').trim() || 'rgba(255,255,255,0.04)';
+    ctx.lineWidth=.5;
+    for(let r=0;r<rows;r++) {
+      ctx.beginPath(); ctx.moveTo(0,r*cell); ctx.lineTo(cols*cell,r*cell); ctx.stroke();
+    }
+    for(let c=0;c<cols;c++) {
+      ctx.beginPath(); ctx.moveTo(c*cell,0); ctx.lineTo(c*cell,rows*cell); ctx.stroke();
+    }
+
+    // Board
+    for(let r=0;r<rows;r++) {
+      for(let c=0;c<cols;c++) {
+        if(this.board[r][c]) {
+          const flash = this.flashRows.includes(r) && (Math.floor(Date.now()/60)%2===0);
+          this.drawCell(ctx, c, r, flash ? '#ffffff' : this.board[r][c]);
+        }
+      }
+    }
+
+    // Ghost
+    if(this.current && !this.over) {
+      const gy = this.ghostY();
+      const s = this.shape(this.current);
+      ctx.globalAlpha=.25;
+      for(let r=0;r<s.length;r++)
+        for(let c=0;c<s[r].length;c++)
+          if(s[r][c]) this.drawCell(ctx, this.current.x+c, gy+r, TETROMINOES[this.current.key].color);
+      ctx.globalAlpha=1;
+    }
+
+    // Current piece
+    if(this.current && !this.over) {
+      const s = this.shape(this.current);
+      for(let r=0;r<s.length;r++)
+        for(let c=0;c<s[r].length;c++)
+          if(s[r][c]) this.drawCell(ctx, this.current.x+c, this.current.y+r, TETROMINOES[this.current.key].color);
+    }
+
+    this.renderHold();
+    this.renderNext();
+
+    document.getElementById('scoreDisplay').textContent = this.score.toLocaleString();
+    document.getElementById('linesDisplay').textContent = this.lines;
+  }
+
+  drawCell(ctx, cx, cy, color) {
+    const { cell } = this;
+    const x=cx*cell, y=cy*cell;
+    const r=cell>10?3:1;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(x+1,y+1,cell-2,cell-2,r) : ctx.rect(x+1,y+1,cell-2,cell-2);
+    ctx.fill();
+    // Highlight
+    ctx.fillStyle='rgba(255,255,255,0.2)';
+    ctx.fillRect(x+2,y+2, cell-4, Math.max(2,cell*.2));
+  }
+
+  drawMiniPiece(ctx, key, canvasW, canvasH, cellSize) {
+    ctx.clearRect(0,0,canvasW,canvasH);
+    if(!key) return;
+    const def = TETROMINOES[key];
+    const s = def.shapes[0];
+    const sw=s[0].length, sh=s.length;
+    const ox=Math.floor((canvasW/cellSize-sw)/2)*cellSize;
+    const oy=Math.floor((canvasH/cellSize-sh)/2)*cellSize;
+    for(let r=0;r<sh;r++)
+      for(let c=0;c<sw;c++)
+        if(s[r][c]) {
+          ctx.fillStyle=def.color;
+          ctx.fillRect(ox+c*cellSize+1,oy+r*cellSize+1,cellSize-2,cellSize-2);
+        }
+  }
+
+  renderHold() {
+    const hc = document.getElementById('holdCanvas');
+    const size = this.mode==='mini'?24:80;
+    const cs = this.mode==='mini'?6:20;
+    this.hctx.clearRect(0,0,size,size);
+    if(this.holdKey) {
+      this.hctx.globalAlpha = this.holdUsed ? .4 : 1;
+      this.drawMiniPiece(this.hctx, this.holdKey, size, size, cs);
+      this.hctx.globalAlpha = 1;
+    }
+  }
+
+  renderNext() {
+    const { nctx, nCell, nextCount } = this;
+    const w = 4*nCell;
+    const hPer = 4*nCell + 4;
+    nctx.clearRect(0,0,w,hPer*nextCount);
+    for(let i=0;i<nextCount;i++) {
+      const key = this.nextPieces[i];
+      if(!key) continue;
+      const def = TETROMINOES[key];
+      const s = def.shapes[0];
+      const sw=s[0].length, sh=s.length;
+      const ox=Math.floor((4-sw)/2)*nCell;
+      const oy=i*hPer + Math.floor((4-sh)/2)*nCell;
+      nctx.globalAlpha = 1 - i*0.25;
+      for(let r=0;r<sh;r++)
+        for(let c=0;c<sw;c++)
+          if(s[r][c]) {
+            nctx.fillStyle=def.color;
+            nctx.fillRect(ox+c*nCell+1,oy+r*nCell+1,nCell-2,nCell-2);
+          }
+    }
+    nctx.globalAlpha=1;
+  }
+}
+
+// ============================================================
+//  UI HELPERS
+// ============================================================
+function showEffect(text, big=false) {
+  const el = document.getElementById('effect-text');
+  el.style.fontSize = big ? '2.2rem' : '1.6rem';
+  el.style.color = big ? '#ffbe0b' : '#00f5ff';
+  el.textContent = text;
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+}
+
+function showScorePopup(text) {
+  const wrap = document.getElementById('canvas-wrap');
+  const el = document.createElement('div');
+  el.className='score-popup';
+  el.textContent=text;
+  el.style.left = (20+Math.random()*60)+'%';
+  el.style.top  = (20+Math.random()*40)+'%';
+  wrap.appendChild(el);
+  setTimeout(()=>el.remove(),1000);
+}
+
+function updateRen(ren) {
+  const el = document.getElementById('ren-display');
+  if(ren>0) el.textContent = ren+' REN';
+  else el.textContent='';
+}
+
+// ============================================================
+//  BEST SCORE  (localStorage)
+// ============================================================
+function bestKey(mode, minoOnly) {
+  if(mode==='mino-only') return 'tetris_best_mino-only_' + [...minoOnly].sort().join('');
+  return 'tetris_best_' + mode;
+}
+
+function loadBest(mode, minoOnly) {
+  try {
+    const raw = localStorage.getItem(bestKey(mode, minoOnly));
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function saveBest(mode, minoOnly, score, lines, elapsed) {
+  const key = bestKey(mode, minoOnly);
+  const prev = loadBest(mode, minoOnly);
+  // スコアが高い方を保存（タイムアタックモードはスコア優先）
+  if(!prev || score > prev.score) {
+    try {
+      localStorage.setItem(key, JSON.stringify({ score, lines, elapsed }));
+      return true; // 更新した
+    } catch(e) {}
+  }
+  return false;
+}
+
+function fmtTime(ms) {
+  const sec = Math.floor(ms/1000)%60;
+  const min = Math.floor(ms/60000);
+  return min+':'+(sec<10?'0':'')+sec;
+}
+
+function updateMenuBests() {
+  const modes = ['normal','line10','line100','mini'];
+  modes.forEach(mode=>{
+    const b = loadBest(mode, []);
+    const el = document.getElementById('best-'+mode);
+    if(el) el.textContent = b ? 'BEST: '+b.score.toLocaleString() : '';
+  });
+  // mino-only は現在の選択ミノで表示
+  const bm = loadBest('mino-only', selectedMinoes);
+  const em = document.getElementById('best-mino-only');
+  if(em) em.textContent = bm ? 'BEST: '+bm.score.toLocaleString() : '';
+}
+
+function showGameOver(g) {
+  const elapsed = g.elapsed;
+  const timeStr = fmtTime(elapsed);
+
+  // ベスト保存
+  const isNew = saveBest(g.mode, g.minoOnly, g.score, g.lines, elapsed);
+  const best  = loadBest(g.mode, g.minoOnly);
+
+  document.getElementById('over-title').textContent = g.won ? 'CLEAR!' : 'GAME OVER';
+  document.getElementById('over-title').style.color = g.won ? 'var(--accent)' : 'var(--accent2)';
+  document.getElementById('stat-score').textContent = g.score.toLocaleString();
+  document.getElementById('stat-lines').textContent = g.lines;
+  document.getElementById('stat-time').textContent  = timeStr;
+  document.getElementById('stat-mode').textContent  = g.mode.toUpperCase();
+
+  const bestEl = document.getElementById('stat-best');
+  if(best) {
+    bestEl.textContent = best.score.toLocaleString() + (isNew ? ' ★NEW!' : '');
+    bestEl.style.color = isNew ? 'var(--accent2)' : 'var(--accent3)';
+  } else {
+    bestEl.textContent = '-';
+  }
+
+  document.getElementById('screen-game').style.display='none';
+  document.getElementById('screen-over').style.display='block';
+
+  updateMenuBests();
+}
+
+// ============================================================
+//  MODE SETUP
+// ============================================================
+let selectedMode   = 'normal';
+let selectedMinoes = ['I'];
+
+const modeLabels = {
+  normal:'NORMAL', line10:'10 LINE', line100:'100 LINE',
+  'mino-only':'MINO ONLY', mini:'MINI'
+};
+
+document.querySelectorAll('.mode-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedMode = btn.dataset.mode;
+
+    const sel = document.getElementById('mino-selector');
+    if(selectedMode==='mino-only') {
+      sel.classList.add('visible');
+    } else {
+      sel.classList.remove('visible');
+    }
+  });
+});
+
+// Mino selector
+const minoSel = document.getElementById('mino-selector');
+PIECE_KEYS.forEach(k=>{
+  const btn = document.createElement('button');
+  btn.className='mino-select-btn';
+  btn.textContent=k;
+  btn.style.color = TETROMINOES[k].color;
+  btn.style.borderColor = selectedMinoes.includes(k) ? TETROMINOES[k].color : '';
+  if(selectedMinoes.includes(k)) btn.classList.add('selected');
+  btn.addEventListener('click',()=>{
+    if(selectedMinoes.includes(k)) {
+      if(selectedMinoes.length===1) return; // need at least 1
+      selectedMinoes=selectedMinoes.filter(m=>m!==k);
+      btn.classList.remove('selected');
+      btn.style.borderColor='';
+    } else {
+      selectedMinoes.push(k);
+      btn.classList.add('selected');
+      btn.style.borderColor=TETROMINOES[k].color;
+    }
+    // ミノ選択変更→そのキー組み合わせのベスト更新
+    const bm = loadBest('mino-only', selectedMinoes);
+    const em = document.getElementById('best-mino-only');
+    if(em) em.textContent = bm ? 'BEST: '+bm.score.toLocaleString() : '';
+  });
+  minoSel.appendChild(btn);
+});
+
+document.getElementById('start-btn').addEventListener('click', startGame);
+
+function startGame() {
+  const minoOnly = selectedMode==='mino-only' ? [...selectedMinoes] : [];
+
+  document.getElementById('screen-menu').style.display='none';
+  document.getElementById('screen-over').style.display='none';
+  document.getElementById('screen-game').style.display='block';
+  document.getElementById('modeDisplay').textContent = modeLabels[selectedMode]||selectedMode;
+  document.getElementById('timer-bar-wrap').style.display='none';
+  document.getElementById('ren-display').textContent='';
+
+  // Cleanup previous
+  if(game) { game.cleanup(); cancelAnimationFrame(game.animId); }
+  game = new TetrisGame(selectedMode, minoOnly);
+}
+
+document.getElementById('retry-btn').addEventListener('click',()=>{
+  document.getElementById('screen-over').style.display='none';
+  startGame();
+});
+document.getElementById('menu-btn').addEventListener('click',()=>{
+  document.getElementById('screen-over').style.display='none';
+  document.getElementById('screen-game').style.display='none';
+  document.getElementById('screen-menu').style.display='block';
+  updateMenuBests();
+});
+
+// default select normal
+document.querySelector('[data-mode="normal"]').click();
+updateMenuBests();
+</script>
 </body>
 </html>
