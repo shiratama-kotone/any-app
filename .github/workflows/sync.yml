@@ -5,6 +5,9 @@ on:
     - cron: "0 * * * *" # 1時間ごと
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -16,12 +19,12 @@ jobs:
       - name: コピー元を取得（gh-pages）
         run: |
           git clone --depth=1 --branch gh-pages https://github.com/ozh/cookieclicker.git temp
+          rm -rf temp/.git
 
-      - name: コピー
+      - name: 同期（中身だけ）
         run: |
-          rm -rf game/cookie-clicker
           mkdir -p game/cookie-clicker
-          rsync -av --exclude='.git' temp/ game/cookie-clicker/
+          rsync -av --delete temp/ game/cookie-clicker/
 
       - name: push
         run: |
