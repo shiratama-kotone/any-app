@@ -2,21 +2,21 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<link rel="stylesheet" href="style.css">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>最強TJA改造ツール</title>
+<title>TJA改造ツール</title>
+<link rel="stylesheet" href="style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
 
 <h2>🔥 最強TJA改造ツール</h2>
 
-<input type="file" id="file"><br><br>
+<input type="file" id="file"><br>
 
-<textarea id="input" style="width:100%;height:200px;"></textarea>
+<textarea id="input" placeholder="ここにTJAが表示される"></textarea>
 
 <h3>密度</h3>
-倍率 <input id="rate" value="1">
+倍率 <input id="rate" value="10">
 
 <h3>HS変換（0で無効）</h3>
 Easy <input id="easy" value="0">
@@ -35,165 +35,139 @@ Edit <input id="edit" value="0">
 <option value="balloon">全てくすだま</option>
 </select>
 
-<br>
-<label><input type="checkbox" id="keepRoll" checked> 連打はそのまま</label>
+<label><input type="checkbox" id="keepRoll" checked>連打そのまま</label>
 
-<br><br>
+<br>
 <button onclick="convert()">変換</button>
 
 <h3>結果</h3>
-<textarea id="output" style="width:100%;height:200px;"></textarea><br>
+<textarea id="output"></textarea>
 <button onclick="download()">ダウンロード</button>
 
 <script>
-var originalZip = null;
-var originalName = "";
+var originalZip=null, originalName="";
 
-// 🔥文字コード自動判別
+// 文字コード自動
 function decodeAuto(data){
-    var utf8 = new TextDecoder("utf-8").decode(data);
-    var bad = (utf8.match(/�/g) || []).length;
-    if (bad < 3) return utf8;
+    var utf8=new TextDecoder("utf-8").decode(data);
+    if((utf8.match(/�/g)||[]).length<3) return utf8;
     return new TextDecoder("shift_jis").decode(data);
 }
 
 // 読み込み
-document.getElementById("file").addEventListener("change", async e=>{
-    var f = e.target.files[0];
-    if (!f) return;
+file.onchange=async e=>{
+    var f=e.target.files[0];
+    if(!f)return;
+    originalName=f.name;
 
-    originalName = f.name;
-
-    if (f.name.endsWith(".zip")){
-        originalZip = await JSZip.loadAsync(f);
-
-        var found = false;
-        originalZip.forEach(async (p, entry)=>{
-            if (p.endsWith(".tja") && !found){
-                found = true;
-                var data = await entry.async("uint8array");
-                input.value = decodeAuto(data);
+    if(f.name.endsWith(".zip")){
+        originalZip=await JSZip.loadAsync(f);
+        originalZip.forEach(async(p,en)=>{
+            if(p.endsWith(".tja")){
+                var d=await en.async("uint8array");
+                input.value=decodeAuto(d);
             }
         });
-
-    } else {
-        originalZip = null;
-
-        var reader = new FileReader();
-        reader.onload = ()=> input.value = reader.result;
-        reader.readAsText(f);
+    }else{
+        originalZip=null;
+        var r=new FileReader();
+        r.onload=()=>input.value=r.result;
+        r.readAsText(f);
     }
-});
+};
 
 // ノーツ変換
-function transformLine(line, rate, mode, keepRoll){
-    return line.replace(/[0-9]/g, c=>{
-        if (keepRoll && "5678".includes(c)){
-            return c.repeat(rate);
-        }
-
-        var n = c;
-        if (mode === "don") n = "1";
-        if (mode === "ka") n = "2";
-        if (mode === "bigdon") n = "3";
-        if (mode === "bigka") n = "4";
-        if (mode === "balloon") n = "9";
-
+function transform(line,rate,mode,keep){
+    return line.replace(/[0-9]/g,c=>{
+        if(keep && "5678".includes(c)) return c.repeat(rate);
+        var n=c;
+        if(mode==="don")n="1";
+        if(mode==="ka")n="2";
+        if(mode==="bigdon")n="3";
+        if(mode==="bigka")n="4";
+        if(mode==="balloon")n="9";
         return n.repeat(rate);
     });
 }
 
-// 本処理
+// 本体
 function process(text){
-    var lines = text.split("\n");
+    var lines=text.split("\n");
+    var rate=parseInt(rateInput.value)||1;
 
-    var rate = parseInt(document.getElementById("rate").value) || 1;
-
-    var diff = {
-        Easy: parseFloat(document.getElementById("easy").value) || 0,
-        Normal: parseFloat(document.getElementById("normal").value) || 0,
-        Hard: parseFloat(document.getElementById("hard").value) || 0,
-        Oni: parseFloat(document.getElementById("oni").value) || 0,
-        Edit: parseFloat(document.getElementById("edit").value) || 0
+    var diff={
+        Easy:parseFloat(easy.value)||0,
+        Normal:parseFloat(normal.value)||0,
+        Hard:parseFloat(hard.value)||0,
+        Oni:parseFloat(oni.value)||0,
+        Edit:parseFloat(edit.value)||0
     };
 
-    var mode = document.getElementById("mode").value;
-    var keepRoll = document.getElementById("keepRoll").checked;
+    var cur=null, measure=0, inScore=false;
 
-    var current = null;
-    var measure = 0;
-    var inScore = false;
+    for(var i=0;i<lines.length;i++){
+        var l=lines[i];
 
-    for (var i = 0; i < lines.length; i++){
-        var l = lines[i];
-
-        if (l.startsWith("COURSE:")){
-            current = l.split(":")[1].trim();
-            measure = 0;
+        if(l.startsWith("TITLE:")){
+            lines[i]=l+" ("+rate+"倍)";
         }
 
-        if (l.startsWith("#START")){
-            inScore = true;
-            measure = 0;
+        if(l.startsWith("COURSE:")){
+            cur=l.split(":")[1].trim();
+            measure=0;
         }
 
-        if (l.startsWith("#END")){
-            inScore = false;
-        }
+        if(l.startsWith("#START")){inScore=true;measure=0;}
+        if(l.startsWith("#END")) inScore=false;
 
-        if (inScore && !l.startsWith("#")){
+        if(inScore && !l.startsWith("#")){
             measure++;
 
-            if (diff[current] !== 0){
-                var hs = 1 + diff[current] * measure;
-                lines.splice(i, 0, "#SCROLL " + hs);
+            if(diff[cur]!==0){
+                var hs=1+diff[cur]*measure;
+                lines.splice(i,0,"#SCROLL "+hs);
                 i++;
             }
 
-            lines[i] = transformLine(l, rate, mode, keepRoll);
+            lines[i]=transform(l,rate,mode.value,keepRoll.checked);
         }
     }
-
     return lines.join("\n");
 }
 
-// 変換
 function convert(){
-    output.value = process(input.value);
+    output.value=process(input.value);
 }
 
-// ダウンロード
 async function download(){
-    if (originalZip){
-        var newZip = new JSZip();
-        var tasks = [];
+    var rate=parseInt(rateInput.value)||1;
 
-        originalZip.forEach((p, entry)=>{
-            tasks.push(
-                entry.async("uint8array").then(data=>{
-                    if (p.endsWith(".tja")){
-                        var txt = decodeAuto(data);
-                        newZip.file(p, process(txt));
-                    } else {
-                        newZip.file(p, data);
-                    }
-                })
-            );
-        });
+    if(originalZip){
+        var newZip=new JSZip();
 
-        await Promise.all(tasks);
+        await Promise.all(Object.keys(originalZip.files).map(async p=>{
+            var e=originalZip.files[p];
+            var data=await e.async("uint8array");
 
-        var blob = await newZip.generateAsync({type:"blob"});
-        var a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = originalName;
+            if(p.endsWith(".tja")){
+                var txt=decodeAuto(data);
+                newZip.file(p,process(txt));
+            }else{
+                newZip.file(p,data);
+            }
+        }));
+
+        var blob=await newZip.generateAsync({type:"blob"});
+        var a=document.createElement("a");
+        a.href=URL.createObjectURL(blob);
+        a.download=originalName.replace(".zip"," ("+rate+"倍).zip");
         a.click();
 
-    } else {
-        var blob = new Blob([output.value], {type:"text/plain"});
-        var a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = originalName.replace(/\..+$/, "") + "_mod.tja";
+    }else{
+        var blob=new Blob([output.value]);
+        var a=document.createElement("a");
+        a.href=URL.createObjectURL(blob);
+        a.download=originalName.replace(".tja"," ("+rate+"倍).tja");
         a.click();
     }
 }
