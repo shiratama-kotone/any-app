@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>最強TJAツール 完全版</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+
+<h2>🔥 最強TJA改造ツール</h2>
+
+<input type="file" id="file"><br><br>
+
+<textarea id="input" style="width:100%;height:200px;"></textarea>
+
+<h3>密度</h3>
+倍率 <input id="rate" value="1">
+
+<h3>HS変換（0なら無効）</h3>
+Easy <input id="easy" value="0">
+Normal <input id="normal" value="0">
+Hard <input id="hard" value="0">
+Oni <input id="oni" value="0">
+Edit <input id="edit" value="0">
+
+<h3>ノーツ変換</h3>
+<select id="mode">
+<option value="none">そのまま</option>
+<option value="don">全てドン</option>
+<option value="ka">全てカッ</option>
+<option value="bigdon">全て大ドン</option>
+<option value="bigka">全て大カッ</option>
+<option value="balloon">全てくすだま</option>
+</select>
+
+<br>
+<label><input type="checkbox" id="keepRoll" checked> 連打はそのまま</label>
+
+<br><br>
+<button onclick="convert()">変換</button>
+
+<h3>結果</h3>
+<textarea id="output" style="width:100%;height:200px;"></textarea><br>
+<button onclick="download()">ダウンロード</button>
+
+<script>
+var originalZip = null;
+var originalName = "";
+
+// 読み込み
+document.getElementById("file").addEventListener("change", async e=>{
+    var f = e.target.files[0];
+    if (!f) return;
+
+    originalName = f.name;
+
+    if (f.name.endsWith(".zip")){
+        originalZip = await JSZip.loadAsync(f);
+
+        var found = false;
+        originalZip.forEach(async (p, entry)=>{
+            if (p.endsWith(".tja") && !found){
+                found = true;
+                var txt = await entry.async("string");
+                input.value = txt;
+            }
+        });
+
+    } else {
+        originalZip = null;
+        var reader = new FileReader();
+        reader.onload = ()=> input.value = reader.result;
+        reader.readAsText(f);
+    }
+});
+
+// ノーツ変換
+function transformLine(line, rate, mode, keepRoll){
+    return line.replace(/[0-9]/g, c=>{
+        if (keepRoll && "5678".includes(c)){
+            return c.repeat(rate);
+        }
+
+        var n = c;
+        if (mode === "don") n = "1";
+        if (mode === "ka") n = "2";
+        if (mode === "bigdon") n = "3";
+        if (mode === "bigka") n = "4";
+        if (mode === "balloon") n = "9";
+
+        return n.repeat(rate);
+    });
+}
+
+// 本処理
+function process(text){
+    var lines = text.split("\n");
+
+    var rate = parseInt(document.getElementById("rate").value) || 1;
+
+    var diff = {
+        Easy: parseFloat(document.getElementById("easy").value) || 0,
+        Normal: parseFloat(document.getElementById("normal").value) || 0,
+        Hard: parseFloat(document.getElementById("hard").value) || 0,
+        Oni: parseFloat(document.getElementById("oni").value) || 0,
+        Edit: parseFloat(document.getElementById("edit").value) || 0
+    };
+
+    var mode = document.getElementById("mode").value;
+    var keepRoll = document.getElementById("keepRoll").checked;
+
+    var current = null;
+    var measure = 0;
+    var inScore = false;
+
+    for (var i = 0; i < lines.length; i++){
+        var l = lines[i];
+
+        if (l.startsWith("COURSE:")){
+            current = l.split(":")[1].trim();
+            measure = 0;
+        }
+
+        if (l.startsWith("#START")) {
+            inScore = true;
+            measure = 0;
+        }
+
+        if (l.startsWith("#END")) {
+            inScore = false;
+        }
+
+        if (inScore && !l.startsWith("#")){
+            measure++;
+
+            // HS適用（0ならスキップ）
+            if (diff[current] !== 0){
+                var hs = 1 + diff[current] * measure;
+                lines.splice(i, 0, "#SCROLL " + hs);
+                i++;
+            }
+
+            lines[i] = transformLine(l, rate, mode, keepRoll);
+        }
+    }
+
+    return lines.join("\n");
+}
+
+// 変換
+function convert(){
+    output.value = process(input.value);
+}
+
+// ダウンロード
+async function download(){
+    if (originalZip){
+        var newZip = new JSZip();
+        var tasks = [];
+
+        originalZip.forEach((p, entry)=>{
+            tasks.push(
+                entry.async("uint8array").then(data=>{
+                    if (p.endsWith(".tja")){
+                        var txt = new TextDecoder().decode(data);
+                        newZip.file(p, process(txt));
+                    } else {
+                        newZip.file(p, data);
+                    }
+                })
+            );
+        });
+
+        await Promise.all(tasks);
+
+        var blob = await newZip.generateAsync({type:"blob"});
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = originalName;
+        a.click();
+
+    } else {
+        var blob = new Blob([output.value], {type:"text/plain"});
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = originalName.replace(/\..+$/, "") + "_mod.tja";
+        a.click();
+    }
+}
+</script>
+
+</body>
+</html>
