@@ -2,9 +2,8 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<link rel="stylesheet" href="style.css">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>最強TJAツール 完全版</title>
+<title>最強TJA改造ツール</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
@@ -18,7 +17,7 @@
 <h3>密度</h3>
 倍率 <input id="rate" value="1">
 
-<h3>HS変換（0なら無効）</h3>
+<h3>HS変換（0で無効）</h3>
 Easy <input id="easy" value="0">
 Normal <input id="normal" value="0">
 Hard <input id="hard" value="0">
@@ -49,6 +48,14 @@ Edit <input id="edit" value="0">
 var originalZip = null;
 var originalName = "";
 
+// 🔥文字コード自動判別
+function decodeAuto(data){
+    var utf8 = new TextDecoder("utf-8").decode(data);
+    var bad = (utf8.match(/�/g) || []).length;
+    if (bad < 3) return utf8;
+    return new TextDecoder("shift_jis").decode(data);
+}
+
 // 読み込み
 document.getElementById("file").addEventListener("change", async e=>{
     var f = e.target.files[0];
@@ -63,13 +70,14 @@ document.getElementById("file").addEventListener("change", async e=>{
         originalZip.forEach(async (p, entry)=>{
             if (p.endsWith(".tja") && !found){
                 found = true;
-                var txt = await entry.async("string");
-                input.value = txt;
+                var data = await entry.async("uint8array");
+                input.value = decodeAuto(data);
             }
         });
 
     } else {
         originalZip = null;
+
         var reader = new FileReader();
         reader.onload = ()=> input.value = reader.result;
         reader.readAsText(f);
@@ -123,19 +131,18 @@ function process(text){
             measure = 0;
         }
 
-        if (l.startsWith("#START")) {
+        if (l.startsWith("#START")){
             inScore = true;
             measure = 0;
         }
 
-        if (l.startsWith("#END")) {
+        if (l.startsWith("#END")){
             inScore = false;
         }
 
         if (inScore && !l.startsWith("#")){
             measure++;
 
-            // HS適用（0ならスキップ）
             if (diff[current] !== 0){
                 var hs = 1 + diff[current] * measure;
                 lines.splice(i, 0, "#SCROLL " + hs);
@@ -164,7 +171,7 @@ async function download(){
             tasks.push(
                 entry.async("uint8array").then(data=>{
                     if (p.endsWith(".tja")){
-                        var txt = new TextDecoder().decode(data);
+                        var txt = decodeAuto(data);
                         newZip.file(p, process(txt));
                     } else {
                         newZip.file(p, data);
