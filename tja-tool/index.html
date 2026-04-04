@@ -12,11 +12,11 @@
 </head>
 <body>
 
-<h2>🔥 最強TJA改造ツール</h2>
+<h2>🔥 TJA改造ツール</h2>
 
 <input type="file" id="file"><br>
 
-<textarea id="input"></textarea>
+<textarea id="input" placeholder="ここにTJA表示"></textarea>
 
 <h3>密度</h3>
 倍率 <input id="rate" value="10">
@@ -50,41 +50,41 @@ Edit <input id="edit" value="0">
 <script>
 var originalZip=null, originalName="";
 
-// 🔥文字コード自動判別
+// 文字コード判別
 function decodeAuto(data){
     var utf8=new TextDecoder("utf-8").decode(data);
     if((utf8.match(/�/g)||[]).length<3) return utf8;
     return new TextDecoder("shift_jis").decode(data);
 }
 
-// 🔥Shift_JIS変換
+// Shift_JIS変換
 function toSJIS(str){
-    var unicodeArray = Encoding.stringToCode(str);
-    var sjisArray = Encoding.convert(unicodeArray, "SJIS", "UNICODE");
-    return new Uint8Array(sjisArray);
+    var u = Encoding.stringToCode(str);
+    var s = Encoding.convert(u,"SJIS","UNICODE");
+    return new Uint8Array(s);
 }
 
 // 読み込み
-file.onchange=async e=>{
+document.getElementById("file").addEventListener("change", async e=>{
     var f=e.target.files[0];
     if(!f)return;
     originalName=f.name;
 
     if(f.name.endsWith(".zip")){
         originalZip=await JSZip.loadAsync(f);
-        originalZip.forEach(async(p,en)=>{
+        originalZip.forEach(async (p,en)=>{
             if(p.endsWith(".tja")){
                 var d=await en.async("uint8array");
-                input.value=decodeAuto(d);
+                document.getElementById("input").value=decodeAuto(d);
             }
         });
     }else{
         originalZip=null;
         var r=new FileReader();
-        r.onload=()=>input.value=r.result;
+        r.onload=()=>document.getElementById("input").value=r.result;
         r.readAsText(f);
     }
-};
+});
 
 // ノーツ変換
 function transform(line,rate,mode,keep){
@@ -100,17 +100,20 @@ function transform(line,rate,mode,keep){
     });
 }
 
-// 本処理
+// 本体
 function process(text){
     var lines=text.split("\n");
-    var rate=parseInt(rate.value)||1;
+
+    var rate=parseInt(document.getElementById("rate").value)||1;
+    var mode=document.getElementById("mode").value;
+    var keep=document.getElementById("keepRoll").checked;
 
     var diff={
-        Easy:parseFloat(easy.value)||0,
-        Normal:parseFloat(normal.value)||0,
-        Hard:parseFloat(hard.value)||0,
-        Oni:parseFloat(oni.value)||0,
-        Edit:parseFloat(edit.value)||0
+        Easy:parseFloat(document.getElementById("easy").value)||0,
+        Normal:parseFloat(document.getElementById("normal").value)||0,
+        Hard:parseFloat(document.getElementById("hard").value)||0,
+        Oni:parseFloat(document.getElementById("oni").value)||0,
+        Edit:parseFloat(document.getElementById("edit").value)||0
     };
 
     var cur=null,measure=0,inScore=false;
@@ -118,7 +121,6 @@ function process(text){
     for(var i=0;i<lines.length;i++){
         var l=lines[i];
 
-        // タイトル変更
         if(l.startsWith("TITLE:")){
             lines[i]=l+" ("+rate+"倍)";
         }
@@ -134,27 +136,27 @@ function process(text){
         if(inScore && !l.startsWith("#")){
             measure++;
 
-            // HS
             if(diff[cur]!==0){
                 var hs=1+diff[cur]*measure;
                 lines.splice(i,0,"#SCROLL "+hs);
                 i++;
             }
 
-            lines[i]=transform(l,rate,mode.value,keepRoll.checked);
+            lines[i]=transform(l,rate,mode,keep);
         }
     }
+
     return lines.join("\n");
 }
 
-// 変換
 function convert(){
-    output.value=process(input.value);
+    document.getElementById("output").value=
+        process(document.getElementById("input").value);
 }
 
-// ダウンロード
+// DL
 async function download(){
-    var rate=parseInt(rate.value)||1;
+    var rate=parseInt(document.getElementById("rate").value)||1;
 
     if(originalZip){
         var newZip=new JSZip();
@@ -178,7 +180,7 @@ async function download(){
         a.click();
 
     }else{
-        var sjis=toSJIS(output.value);
+        var sjis=toSJIS(document.getElementById("output").value);
         var blob=new Blob([sjis]);
         var a=document.createElement("a");
         a.href=URL.createObjectURL(blob);
