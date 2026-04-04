@@ -4,8 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TJA改造ツール</title>
+
 <link rel="stylesheet" href="style.css">
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
 </head>
 <body>
 
@@ -13,7 +16,7 @@
 
 <input type="file" id="file"><br>
 
-<textarea id="input" placeholder="ここにTJAが表示される"></textarea>
+<textarea id="input"></textarea>
 
 <h3>密度</h3>
 倍率 <input id="rate" value="10">
@@ -47,11 +50,18 @@ Edit <input id="edit" value="0">
 <script>
 var originalZip=null, originalName="";
 
-// 文字コード自動
+// 🔥文字コード自動判別
 function decodeAuto(data){
     var utf8=new TextDecoder("utf-8").decode(data);
     if((utf8.match(/�/g)||[]).length<3) return utf8;
     return new TextDecoder("shift_jis").decode(data);
+}
+
+// 🔥Shift_JIS変換
+function toSJIS(str){
+    var unicodeArray = Encoding.stringToCode(str);
+    var sjisArray = Encoding.convert(unicodeArray, "SJIS", "UNICODE");
+    return new Uint8Array(sjisArray);
 }
 
 // 読み込み
@@ -90,27 +100,25 @@ function transform(line,rate,mode,keep){
     });
 }
 
-// 本体
+// 本処理
 function process(text){
     var lines=text.split("\n");
-    var rate=parseInt(document.getElementById("rate").value)||1;
+    var rate=parseInt(rate.value)||1;
 
     var diff={
-        Easy:parseFloat(document.getElementById("easy").value)||0,
-        Normal:parseFloat(document.getElementById("normal").value)||0,
-        Hard:parseFloat(document.getElementById("hard").value)||0,
-        Oni:parseFloat(document.getElementById("oni").value)||0,
-        Edit:parseFloat(document.getElementById("edit").value)||0
+        Easy:parseFloat(easy.value)||0,
+        Normal:parseFloat(normal.value)||0,
+        Hard:parseFloat(hard.value)||0,
+        Oni:parseFloat(oni.value)||0,
+        Edit:parseFloat(edit.value)||0
     };
-
-    var mode=document.getElementById("mode").value;
-    var keepRoll=document.getElementById("keepRoll").checked;
 
     var cur=null,measure=0,inScore=false;
 
     for(var i=0;i<lines.length;i++){
         var l=lines[i];
 
+        // タイトル変更
         if(l.startsWith("TITLE:")){
             lines[i]=l+" ("+rate+"倍)";
         }
@@ -126,24 +134,27 @@ function process(text){
         if(inScore && !l.startsWith("#")){
             measure++;
 
+            // HS
             if(diff[cur]!==0){
                 var hs=1+diff[cur]*measure;
                 lines.splice(i,0,"#SCROLL "+hs);
                 i++;
             }
 
-            lines[i]=transform(l,rate,mode,keepRoll);
+            lines[i]=transform(l,rate,mode.value,keepRoll.checked);
         }
     }
     return lines.join("\n");
 }
 
+// 変換
 function convert(){
     output.value=process(input.value);
 }
 
+// ダウンロード
 async function download(){
-    var rate=parseInt(document.getElementById("rate").value)||1;
+    var rate=parseInt(rate.value)||1;
 
     if(originalZip){
         var newZip=new JSZip();
@@ -154,7 +165,7 @@ async function download(){
 
             if(p.endsWith(".tja")){
                 var txt=decodeAuto(data);
-                newZip.file(p,process(txt));
+                newZip.file(p,toSJIS(process(txt)));
             }else{
                 newZip.file(p,data);
             }
@@ -167,7 +178,8 @@ async function download(){
         a.click();
 
     }else{
-        var blob=new Blob([output.value]);
+        var sjis=toSJIS(output.value);
+        var blob=new Blob([sjis]);
         var a=document.createElement("a");
         a.href=URL.createObjectURL(blob);
         a.download=originalName.replace(".tja"," ("+rate+"倍).tja");
