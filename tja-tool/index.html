@@ -15,8 +15,7 @@
 <h2>🔥 TJA改造ツール</h2>
 
 <input type="file" id="file"><br>
-
-<textarea id="input" placeholder="ここにTJA表示"></textarea>
+<textarea id="input"></textarea>
 
 <h3>密度</h3>
 倍率 <input id="rate" value="10">
@@ -57,8 +56,8 @@ function decodeAuto(data){
     return new TextDecoder("shift_jis").decode(data);
 }
 
-// Shift_JIS変換
-function toSJIS(str){
+// SJIS変換（バイナリ）
+function toSJISBinary(str){
     var u = Encoding.stringToCode(str);
     var s = Encoding.convert(u,"SJIS","UNICODE");
     return new Uint8Array(s);
@@ -149,12 +148,13 @@ function process(text){
     return lines.join("\n");
 }
 
+// 変換
 function convert(){
-    document.getElementById("output").value=
+    document.getElementById("output").value =
         process(document.getElementById("input").value);
 }
 
-// DL
+// DL（ZIPもSJISで安全）
 async function download(){
     var rate=parseInt(document.getElementById("rate").value)||1;
 
@@ -167,9 +167,9 @@ async function download(){
 
             if(p.endsWith(".tja")){
                 var txt=decodeAuto(data);
-                newZip.file(p,toSJIS(process(txt)));
+                newZip.file(p, toSJISBinary(process(txt)), {binary:true});
             }else{
-                newZip.file(p,data);
+                newZip.file(p,data,{binary:true});
             }
         }));
 
@@ -180,7 +180,7 @@ async function download(){
         a.click();
 
     }else{
-        var sjis=toSJIS(document.getElementById("output").value);
+        var sjis=toSJISBinary(document.getElementById("output").value);
         var blob=new Blob([sjis]);
         var a=document.createElement("a");
         a.href=URL.createObjectURL(blob);
