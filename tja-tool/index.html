@@ -48,19 +48,31 @@ Edit <input id="edit" value="0">
 
 <script>
 var originalZip=null, originalName="";
+var detectedEncoding="utf-8"; // ←ここ重要
 
-// 文字コード判別
+// 🔥文字コード判別
 function decodeAuto(data){
     var utf8=new TextDecoder("utf-8").decode(data);
-    if((utf8.match(/�/g)||[]).length<3) return utf8;
+    var bad=(utf8.match(/�/g)||[]).length;
+
+    if(bad<3){
+        detectedEncoding="utf-8";
+        return utf8;
+    }
+
+    detectedEncoding="shift_jis";
     return new TextDecoder("shift_jis").decode(data);
 }
 
-// SJIS変換（バイナリ）
-function toSJISBinary(str){
-    var u = Encoding.stringToCode(str);
-    var s = Encoding.convert(u,"SJIS","UNICODE");
-    return new Uint8Array(s);
+// 🔥元の形式でエンコード
+function encodeByDetected(str){
+    if(detectedEncoding==="shift_jis"){
+        var u=Encoding.stringToCode(str);
+        var s=Encoding.convert(u,"SJIS","UNICODE");
+        return new Uint8Array(s);
+    }else{
+        return new TextEncoder().encode(str);
+    }
 }
 
 // 読み込み
@@ -71,17 +83,20 @@ document.getElementById("file").addEventListener("change", async e=>{
 
     if(f.name.endsWith(".zip")){
         originalZip=await JSZip.loadAsync(f);
+
         originalZip.forEach(async (p,en)=>{
             if(p.endsWith(".tja")){
                 var d=await en.async("uint8array");
                 document.getElementById("input").value=decodeAuto(d);
             }
         });
+
     }else{
         originalZip=null;
         var r=new FileReader();
         r.onload=()=>document.getElementById("input").value=r.result;
         r.readAsText(f);
+        detectedEncoding="utf-8"; // 単体は基本UTF扱い
     }
 });
 
@@ -89,12 +104,14 @@ document.getElementById("file").addEventListener("change", async e=>{
 function transform(line,rate,mode,keep){
     return line.replace(/[0-9]/g,c=>{
         if(keep && "5678".includes(c)) return c.repeat(rate);
+
         var n=c;
         if(mode==="don")n="1";
         if(mode==="ka")n="2";
         if(mode==="bigdon")n="3";
         if(mode==="bigka")n="4";
         if(mode==="balloon")n="9";
+
         return n.repeat(rate);
     });
 }
@@ -150,11 +167,11 @@ function process(text){
 
 // 変換
 function convert(){
-    document.getElementById("output").value =
+    document.getElementById("output").value=
         process(document.getElementById("input").value);
 }
 
-// DL（ZIPもSJISで安全）
+// DL
 async function download(){
     var rate=parseInt(document.getElementById("rate").value)||1;
 
@@ -167,7 +184,7 @@ async function download(){
 
             if(p.endsWith(".tja")){
                 var txt=decodeAuto(data);
-                newZip.file(p, toSJISBinary(process(txt)), {binary:true});
+                newZip.file(p, encodeByDetected(process(txt)), {binary:true});
             }else{
                 newZip.file(p,data,{binary:true});
             }
@@ -180,8 +197,8 @@ async function download(){
         a.click();
 
     }else{
-        var sjis=toSJISBinary(document.getElementById("output").value);
-        var blob=new Blob([sjis]);
+        var data=encodeByDetected(document.getElementById("output").value);
+        var blob=new Blob([data]);
         var a=document.createElement("a");
         a.href=URL.createObjectURL(blob);
         a.download=originalName.replace(".tja"," ("+rate+"倍).tja");
