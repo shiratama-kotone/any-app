@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>爆速ID探索+ (MAX POWER)</title>
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: #eee; padding: 20px; }
+        .content { max-width: 600px; margin: auto; background: #2a2a2a; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h2 { border-bottom: 2px solid #ff4500; padding-bottom: 10px; color: #ff4500; }
+        input, button { padding: 10px; margin: 5px 0; border-radius: 5px; border: none; }
+        input[type="text"] { width: calc(100% - 22px); background: #333; color: #fff; }
+        button { cursor: pointer; font-weight: bold; transition: 0.2s; }
+        #start { background: #ff4500; color: white; width: 70%; }
+        #stop { background: #555; color: white; width: 28%; }
+        #start:hover { background: #ff6347; }
+        #status { margin-top: 15px; font-weight: bold; color: #00ff00; }
+        #stats { font-family: monospace; font-size: 0.9em; margin-bottom: 10px; color: #aaa; }
+        #results { height: 300px; overflow-y: auto; background: #111; padding: 10px; border-radius: 5px; font-family: monospace; border: 1px solid #444; }
+        .hit-item { border-bottom: 1px solid #333; padding: 3px 0; }
+        b { color: #ff4500; }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h2>⚡ 爆速ID探索+ (全コア解放)</h2>
+
+    <input id="include" type="text" placeholder="含めたい文字列 (例: abc)">
+
+    <div style="margin: 10px 0;">
+        <label><input type="checkbox" id="onlyUpper"> 英大文字のみ</label><br>
+        <label><input type="checkbox" id="onlyLower"> 英小文字のみ</label><br>
+        <label><input type="checkbox" id="onlyNumber"> 数字のみ</label><br>
+        <label><input type="checkbox" id="ignoreCase"> 大文字小文字区別しない</label>
+    </div>
+
+    <button id="start">全コアで開始</button>
+    <button id="stop">停止</button>
+
+    <div id="status">停止中</div>
+    <div id="stats">試行:0 ヒット:0 (0.00000%)</div>
+    <div id="results"></div>
+</div>
+
+<script>
+var workers = [];
+var running = false;
+var totalTries = 0;
+var hits = 0;
+var lastUiUpdate = 0;
+
+// Worker用の内部コード (SHA-256エンジン)
+var workerCode = `
+function sha256(ascii) {
+    function rotateRight(n, s) { return (n >>> s) | (n << (32 - s)); }
+    var mathPow = Math.pow, maxWord = mathPow(2, 32), result = '', words = [], asciiBitLength = ascii.length * 8;
+    var hash = sha256.h = sha256.h || [], k = sha256.k = sha256.k || [], primeCounter = k.length;
+    var isComposite = {};
+    for (var i = 2; primeCounter < 64; i++) {
+        if (!isComposite[i]) {
+            for (var j = i * i; j < 313; j += i) isComposite[j] = true;
+            hash[primeCounter] = (mathPow(i, .5) * maxWord) | 0;
+            k[primeCounter++] = (mathPow(i, 1 / 3) * maxWord) | 0;
+        }
+    }
+    ascii += '\\x80';
+    while (ascii.length % 64 - 56) ascii += '\\x00';
+    for (i = 0; i < ascii.length; i++) {
+        var j = ascii.charCodeAt(i);
+        if (j >> 8) return;
+        words[i >> 2] |= j << ((3 - i) % 4) * 8;
+    }
+    words[words.length] = ((asciiBitLength / maxWord) | 0);
+    words[words.length] = (asciiBitLength | 0);
+    for (j = 0; j < words.length;) {
+        var w = words.slice(j, j += 16);
+        var oldHash = hash.slice(0);
+        for (i = 0; i < 64; i++) {
+            var w15 = w[i - 15], w2 = w[i - 2];
+            var a = hash[0], e = hash[4];
+            var temp1 = hash[7] + (rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25)) + (e & hash[5] ^ ~e & hash[6]) + k[i] + (w[i] = (i < 16) ? w[i] : (w[i - 16] + (rotateRight(w15, 7) ^ rotateRight(w15, 18) ^ (w15 >>> 3)) + w[i - 7] + (rotateRight(w2, 17) ^ rotateRight(w2, 19) ^ (w2 >>> 10))) | 0);
+            var temp2 = (rotateRight(a, 2) ^ rotateRight(a, 13) ^ rotateRight(a, 22)) + (a & hash[1] ^ a & hash[2] ^ hash[1] & hash[2]);
+            hash = [(temp1 + temp2) | 0].concat(hash);
+            hash[4] = (hash[4] + temp1) | 0;
+        }
+        for (i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
+    }
+    var binary = "";
+    for (i = 0; i < 8; i++) {
+        for (var b = 3; b >= 0; b--) {
+            binary += String.fromCharCode((hash[i] >> (b * 8)) & 255);
+        }
+    }
+    return btoa(binary);
+}
+
+function randomStr(){
+    var r = '';
+    var c = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    for(var i=0;i<12;i++) r += c[Math.random()*62|0];
+    return r;
+}
+
+onmessage = (e) => {
+    var {include, upper, lower, number, ignoreCase} = e.data;
+    if(include && ignoreCase) include = include.toLowerCase();
+    var reSymbols = /[+/=]/g;
+    var batchTries = 0;
+
+    while(true){
+        var base = randomStr();
+        var currentHash = sha256(base);
+        var id = currentHash.replace(reSymbols, "");
+        
+        while(id.length < 7) {
+            currentHash = sha256(currentHash);
+            id += currentHash.replace(reSymbols, "");
+        }
+        id = id.slice(0, 7);
+
+        batchTries++;
+        var ok = false;
+        if(upper) ok = /^[A-Z]+$/.test(id);
+        else if(lower) ok = /^[a-z]+$/.test(id);
+        else if(number) ok = /^[0-9]+$/.test(id);
+        else if(include) {
+            ok = ignoreCase ? id.toLowerCase().includes(include) : id.includes(include);
+        } else {
+            ok = true; // 条件なし
+        }
+
+        if(ok){
+            postMessage({t:2, b:base, i:id, tries: batchTries});
+            batchTries = 0;
+        } else if (batchTries >= 2000) {
+            postMessage({t:1, tries: batchTries});
+            batchTries = 0;
+        }
+    }
+};
+`;
+
+function createWorker(config){
+    var blob = new Blob([workerCode], {type:"application/javascript"});
+    var worker = new Worker(URL.createObjectURL(blob));
+    worker.onmessage = (e)=>{
+        totalTries += e.data.tries || 0;
+        if(e.data.t === 2){
+            hits++;
+            var div = document.createElement("div");
+            div.className = "hit-item";
+            div.innerHTML = e.data.b + " → <b>@" + e.data.i + "</b>";
+            var resBox = document.getElementById("results");
+            resBox.prepend(div);
+            if(resBox.childNodes.length > 100) resBox.removeChild(resBox.lastChild);
+        }
+        var now = Date.now();
+        if(now - lastUiUpdate > 200){
+            var rate = totalTries > 0 ? ((hits/totalTries)*100).toFixed(5) : "0.00000";
+            document.getElementById("stats").textContent = "試行:" + totalTries.toLocaleString() + " ヒット:" + hits + " (" + rate + "%)";
+            lastUiUpdate = now;
+        }
+    };
+    worker.postMessage(config);
+    return worker;
+}
+
+document.getElementById("start").onclick = ()=>{
+    if(running) return;
+    running = true;
+    totalTries = 0; hits = 0; lastUiUpdate = Date.now();
+    document.getElementById("results").innerHTML = "";
+    document.getElementById("status").textContent = "🔥 全コア・フル稼働中";
+
+    var config = {
+        include: document.getElementById("include").value,
+        upper: document.getElementById("onlyUpper").checked,
+        lower: document.getElementById("onlyLower").checked,
+        number: document.getElementById("onlyNumber").checked,
+        ignoreCase: document.getElementById("ignoreCase").checked
+    };
+
+    // 端末の論理プロセッサ数を100%使用
+    var threads = navigator.hardwareConcurrency || 4;
+    console.log("Starting with " + threads + " threads...");
+
+    for(var i=0; i<threads; i++) workers.push(createWorker(config));
+};
+
+document.getElementById("stop").onclick = ()=>{
+    workers.forEach(w=>w.terminate());
+    workers = [];
+    running = false;
+    document.getElementById("status").textContent = "停止 (待機中)";
+};
+</script>
+</body>
+</html>
