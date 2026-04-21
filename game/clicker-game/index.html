@@ -1,43 +1,546 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>クリッカーゲーム</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic&display=swap" rel="stylesheet">
-<style>
-html {
-  font-family: "Zen Maru Gothic", sans-serif;
-  font-style: normal;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>沼クリッカー - 改造用テンプレート</title>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --theme-main: #00ffcc;
+            --theme-bg: #0a0a0a;
+            --theme-panel: #151515;
+            --theme-accent: #ff0077;
+            --theme-click: #ffcc00;
+            --font-main: 'M PLUS 1p', sans-serif;
+        }
+
+        body { background-color: var(--theme-bg); color: #e0e0e0; font-family: var(--font-main); margin: 0; overflow-x: hidden; }
+        
+        /* 📱 基本レイアウト */
+        .game-wrapper { display: grid; grid-template-columns: 320px 1fr 320px; gap: 20px; width: 98%; max-width: 1400px; margin: 30px auto; }
+        .panel { background: var(--theme-panel); border-radius: 15px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); height: 85vh; overflow-y: auto; position: relative; }
+        
+        #click-area { text-align: center; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #main-btn {
+            width: 180px; height: 180px; border-radius: 50%;
+            background: radial-gradient(circle, var(--theme-main), #004d40);
+            border: 4px solid #000; cursor: pointer; box-shadow: 0 0 50px rgba(0,255,204,0.1); transition: 0.1s;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #main-btn:active { transform: scale(0.85); }
+        .score { font-size: 3.5rem; color: var(--theme-main); font-weight: 700; word-break: break-all; }
+        
+        .shop-item { background: rgba(255,255,255,0.05); margin-bottom: 12px; padding: 15px; border-radius: 10px; cursor: pointer; border: 1px solid #333; transition: 0.2s; }
+        .shop-item:hover { border-color: var(--theme-main); background: rgba(255,255,255,0.1); }
+        .shop-item.type-click { border-left: 5px solid var(--theme-click); }
+        .shop-item.type-auto { border-left: 5px solid var(--theme-accent); }
+        .shop-item.disabled { opacity: 0.4; pointer-events: none; }
+
+        .particle { position: fixed; font-weight: bold; pointer-events: none; z-index: 9999; animation: floatUp 0.8s ease-out forwards; }
+        @keyframes floatUp { 0%{ transform:translateY(0); opacity:1; } 100%{ transform:translateY(-100px); opacity:0; } }
+
+        /* 通常のエフェクト */
+        @keyframes crt-warp {
+            0% { transform: scale(1) skew(0deg); filter: hue-rotate(0deg); }
+            50% { transform: scale(1.02) skew(2deg); filter: hue-rotate(180deg) contrast(1.5); }
+            100% { transform: scale(1) skew(0deg); filter: hue-rotate(360deg); }
+        }
+        .crt-active { animation: crt-warp 0.2s infinite; text-shadow: 2px 0 2px rgba(255,0,0,0.8), -2px 0 2px rgba(0,255,255,0.8); }
+
+        /* 隠しフォーム */
+        #secret-container {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: repeating-linear-gradient(0deg, #000, #000 2px, #111 2px, #111 4px);
+            border: 1px solid var(--theme-accent); box-shadow: 0 0 15px var(--theme-accent), inset 0 0 10px rgba(255,0,119,0.5);
+            padding: 15px 25px; border-radius: 4px; display: flex; gap: 10px; align-items: center;
+            opacity: 0; pointer-events: none; z-index: 100;
+        }
+        .cyber-input { background: transparent; border: none; border-bottom: 2px solid var(--theme-main); color: var(--theme-main); font-family: monospace; font-size: 1rem; padding: 5px; outline: none; width: 150px; text-shadow: 0 0 5px var(--theme-main); transition: 0.3s; }
+        .cyber-input:focus { border-bottom-color: var(--theme-accent); color: var(--theme-accent); text-shadow: 0 0 5px var(--theme-accent); }
+        .cyber-btn { background: rgba(0,255,204,0.1); border: 1px solid var(--theme-main); color: var(--theme-main); padding: 6px 10px; cursor: pointer; font-family: inherit; font-weight: bold; transition: 0.2s; text-transform: uppercase; }
+        .cyber-btn:hover { background: var(--theme-main); color: #000; box-shadow: 0 0 15px var(--theme-main); }
+
+        @keyframes form-glitch {
+            0% { opacity: 0; clip-path: inset(50% 0 50% 0); transform: translateX(-50%) translate(-10px, 5px) skew(20deg); }
+            50% { opacity: 0.8; clip-path: inset(0 0 0 0); transform: translateX(-50%) scale(1.05); }
+            100% { opacity: 1; clip-path: inset(0 0 0 0); transform: translateX(-50%) scale(1); }
+        }
+        .reveal-secret { pointer-events: auto !important; animation: form-glitch 0.5s forwards; }
+
+        /* 💀 ブルースクリーン (BSoD) */
+        #bsod {
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: #0000aa; color: #ffffff; font-family: 'Consolas', 'Courier New', monospace;
+            padding: 8vw; box-sizing: border-box; z-index: 999999; overflow-y: auto;
+        }
+        #bsod h1 { font-size: 8rem; margin: 0 0 20px 0; font-weight: normal; }
+        #bsod p { font-size: 1.5rem; line-height: 1.5; }
+        
+        .title-badge { display: inline-block; background: rgba(255, 215, 0, 0.2); border: 1px solid gold; color: gold; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-top: 5px; margin-right: 5px; box-shadow: 0 0 5px rgba(255,215,0,0.5); }
+
+        /* 🏆 実績ポップアップ (Toast) */
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .achievement-toast {
+            background: rgba(15, 15, 15, 0.95);
+            border: 1px solid var(--theme-click);
+            border-left: 6px solid var(--theme-click);
+            color: #fff;
+            padding: 15px 25px;
+            border-radius: 4px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.8), 0 0 15px rgba(255,204,0,0.3);
+            min-width: 250px;
+            max-width: 80vw;
+            animation: slideInRight 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards, fadeOutRight 0.5s ease-in forwards 4.5s;
+        }
+        .toast-header { font-size: 0.75rem; color: var(--theme-click); margin-bottom: 5px; font-weight: bold; letter-spacing: 1px; }
+        .toast-body { font-size: 1.1rem; font-weight: bold; }
+
+        @keyframes slideInRight {
+            0% { transform: translateX(120%); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOutRight {
+            0% { transform: translateX(0); opacity: 1; }
+            100% { transform: translateX(120%); opacity: 0; }
+        }
+
+        /* 📱 スマホ用レスポンシブ */
+        @media (max-width: 960px) {
+            .game-wrapper { display: flex; flex-direction: column; margin: 10px auto; gap: 15px; }
+            .panel { height: auto; min-height: 30vh; max-height: 60vh; }
+            #click-area { order: -1; min-height: 50vh; }
+            .score { font-size: 2.8rem; }
+            #bsod h1 { font-size: 4rem; }
+            #bsod p { font-size: 1rem; }
+            #toast-container { top: 10px; right: 10px; left: 10px; align-items: flex-end; }
+        }
+    </style>
 </head>
-<body>
-  <div class="left">
-    <div class="game-area" id="game-area">
-      <img id="click-img" class="main-img" src="https://raw.githubusercontent.com/shiratama-kotone/iroiro/refs/heads/main/assets/sddefault.jpg" alt="Click!" />
-      <!-- カーソルはJSから追加 -->
+<body id="game-body">
+
+<div id="toast-container"></div>
+
+<div id="bsod">
+    <h1>:(</h1>
+    <p>問題が発生したため、データと宇宙が崩壊しました。<br>エラー情報を収集しています。自動的に再起動はされません。</p>
+    <br>
+    <p>停止コード: NUMA_FATAL_ERASE_ALL</p>
+    <p style="margin-top: 50px; font-size: 1rem; color: #aaa;">※ブラウザを再読み込み（F5キー）すると世界が再構築されます。</p>
+</div>
+
+<div class="game-wrapper" id="main-ui">
+    <div class="panel">
+        <h3 id="ui-title" style="margin-bottom: 5px;">沼クリッカー</h3>
+        <div id="ui-titles-area" style="min-height: 25px; margin-bottom: 15px;"></div>
+        
+        <p style="font-size: 0.8rem; color: #888;">累計: <span id="ui-total-score">0</span></p>
+        <hr>
+        <h4>転生（プレステージ）</h4>
+        <p style="font-size: 0.8rem; color: #aaa;">条件: 累計 <span id="ui-prestige-req"></span> pt</p>
+        <p>現在の倍率: <strong id="ui-mult" style="color:var(--theme-main);">1.00x</strong></p>
+        <button onclick="GAME.prestige()" style="background:var(--theme-accent); color:white; border:none; padding:15px 10px; border-radius:5px; cursor:pointer; width:100%; font-weight:bold;">魂を捧げて 2倍 にする</button>
     </div>
-  </div>
-    <a href="/any-app/game">ゲーム一覧に戻る</a>
-  <style>
-    a{
-      text-decoration: none;
+
+    <div class="panel" id="click-area">
+        <div class="score" id="ui-score">0</div>
+        <div id="ui-currency" style="color:#777;">ポイント</div>
+        
+        <div style="margin-top: 10px; font-size: 0.9rem; margin-bottom: 40px;">
+            <div style="color:var(--theme-click);">1クリック: +<span id="ui-click-power">1</span></div>
+            <div style="color:var(--theme-accent);">自動収益: <span id="ui-mps">0</span>/s</div>
+        </div>
+        
+        <div>
+            <button id="main-btn" onclick="GAME.click()"></button>
+        </div>
+
+        <div id="secret-container">
+            <span style="color:var(--theme-accent); font-weight:bold;">>_</span>
+            <input type="text" id="secret-input" class="cyber-input" placeholder="ACCESS CODE..." autocomplete="off">
+            <button onclick="GAME.checkSecret()" class="cyber-btn">EXECUTE</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h3>ショップ</h3>
+        <div id="shop-list"></div>
+    </div>
+</div>
+
+<script>
+const CONFIG = {
+    saveKey: "my_custom_clicker_save_v6", 
+    gameTitle: "限界突破クリッカー",
+    currencyName: "ゴールド",
+    baseClickPower: 1,      
+    costInflation: 1.25,    
+    prestigeReq: 10000000000000000,
+    prestigeMult: 2,                
+
+    items: [
+        { id: "i1", name: "ポンコツロボ", type: "auto", baseCost: 15, power: 1, desc: "毎秒 +1" },
+        { id: "i2", name: "マウス筋トレ", type: "click", baseCost: 50, power: 3, desc: "クリック +3" },
+        { id: "i3", name: "AIトレーダー", type: "auto", baseCost: 300, power: 15, desc: "毎秒 +15" },
+        { id: "i4", name: "神の指先", type: "click", baseCost: 1500, power: 40, desc: "クリック +40" },
+        { id: "i5", name: "ブラックホール", type: "auto", baseCost: 8000, power: 250, desc: "毎秒 +250" },
+        { id: "i6", name: "次元圧縮機", type: "auto", baseCost: 500000, power: 15000, desc: "毎秒 +15,000" }
+    ],
+
+    secrets: {
+        "e381afe38198e381bee3828ae381aee4b880e6ada9": "bonus10000", 
+        "e38391e383afe383bce585a8e9968b": "fever",                  
+        "e585a8e6b688e38197": "wipeAll"                             
     }
-  </style>
-  <div class="right">
-    <div class="score" id="score">0 Clicks</div>
-    <button class="btn" id="upgrade-btn">1click = +1（強化する: 10）</button>
-    <button class="btn btn-supporter" id="supporter-btn">
-      Click supporter 購入（50）<br>
-      <span style="font-size:16px;color:#fff9;font-weight:400;">カーソル: 0</span>
-    </button>
-    <button class="reset-btn" id="reset-btn">データリセット</button>
-    <div class="desc">画像やスタイルは自由に変更できます</div>
-  </div>
-  <script src="script.js"></script>
+};
+
+// 🏆 実績のリストと獲得条件
+const ACHIEVEMENTS = [
+    { name: "はじめてのクリック", condition: () => state.totalScore >= 1 },
+    { name: "見習いクリッカー", condition: () => state.totalScore >= 1000 },
+    { name: "沼の入り口", condition: () => state.totalScore >= 50000 },
+    { name: "はじめてのお買い物", condition: () => Object.values(state.inventory).some(count => count > 0) },
+    { name: "資本主義の犬", condition: () => state.inventory["i3"] >= 1 }, // AIトレーダーを買う
+    { name: "次元を超えし者", condition: () => state.inventory["i6"] >= 1 }, // 次元圧縮機を買う
+    { name: "輪廻転生", condition: () => state.prestigeCount > 0 }
+];
+
+function toHex(str) {
+    return Array.from(new TextEncoder().encode(str)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+let keyBuffer = "";
+document.addEventListener("keydown", (e) => {
+    if (e.target.tagName.toLowerCase() === 'input') return;
+    keyBuffer += e.key.toLowerCase();
+    if (keyBuffer.length > 6) keyBuffer = keyBuffer.slice(-6);
+    if (keyBuffer === "secret") {
+        const secretUI = document.getElementById('secret-container');
+        if (!secretUI.classList.contains('reveal-secret')) {
+            secretUI.classList.add('reveal-secret');
+            setTimeout(() => document.getElementById('secret-input').focus(), 600);
+        }
+        keyBuffer = ""; 
+    }
+});
+
+let state = {
+    score: 0, totalScore: 0, multiplier: 1.0, prestigeCount: 0,
+    inventory: {}, titles: [], lastTick: Date.now()
+};
+
+let tempBuff = 1;
+let isWiping = false; 
+
+const GAME = {
+    init() {
+        document.getElementById('ui-title').innerText = CONFIG.gameTitle;
+        document.getElementById('ui-currency').innerText = CONFIG.currencyName;
+        document.getElementById('ui-prestige-req').innerText = CONFIG.prestigeReq.toLocaleString();
+        
+        CONFIG.items.forEach(item => { if (!state.inventory[item.id]) state.inventory[item.id] = 0; });
+        if (!state.titles) state.titles = [];
+        
+        this.load();
+        this.renderTitles();
+        this.renderShop();
+        setInterval(() => this.tick(), 100);
+    },
+
+    // 🏆 実績の条件を満たしているかチェック
+    checkAchievements() {
+        if (isWiping) return; // 崩壊中はチェックしない
+        ACHIEVEMENTS.forEach(ach => {
+            if (!state.titles.includes(ach.name) && ach.condition()) {
+                this.unlockTitle(ach.name);
+            }
+        });
+    },
+
+    getCost(item) {
+        const count = state.inventory[item.id];
+        const growth = CONFIG.costInflation + (count * 0.01);
+        return item.baseCost * Math.pow(growth, count);
+    },
+
+    calcStats() {
+        let mps = 0;
+        let clickPower = CONFIG.baseClickPower;
+        CONFIG.items.forEach(item => {
+            const count = state.inventory[item.id];
+            if (count > 0) {
+                if (item.type === 'auto') mps += item.power * count;
+                if (item.type === 'click') clickPower += item.power * count;
+            }
+        });
+        return { mps, clickPower };
+    },
+
+    tick() {
+        if (isWiping) return; 
+        const stats = this.calcStats();
+        const gain = (stats.mps * state.multiplier) / 10;
+        state.score += gain;
+        state.totalScore += gain;
+        this.updateUI();
+        this.checkAchievements(); // 毎秒実績チェック
+        this.save();
+    },
+
+    click() {
+        if (isWiping) return;
+        const stats = this.calcStats();
+        const val = stats.clickPower * state.multiplier * tempBuff;
+        state.score += val;
+        state.totalScore += val;
+        
+        const x = event && event.clientX ? event.clientX : window.innerWidth / 2;
+        const y = event && event.clientY ? event.clientY : window.innerHeight / 2;
+        this.createParticle(`+${val.toFixed(1)}`, tempBuff > 1, x, y);
+        
+        this.updateUI();
+        this.checkAchievements(); // クリック時に実績チェック
+    },
+
+    buy(itemId) {
+        if (isWiping) return;
+        const item = CONFIG.items.find(i => i.id === itemId);
+        const cost = this.getCost(item);
+        if (state.score >= cost) {
+            state.score -= cost;
+            state.inventory[item.id]++;
+            this.renderShop();
+            this.updateUI();
+            this.checkAchievements(); // 買い物時に実績チェック
+        }
+    },
+
+    prestige() {
+        if (isWiping) return;
+        if (state.totalScore < CONFIG.prestigeReq) {
+            return alert(`まだ力が足りません...\n(転生には累計 ${CONFIG.prestigeReq.toLocaleString()} pt 必要です)`);
+        }
+        if (confirm(`全てのポイントと施設を失う代わりに、永続的な倍率を【${CONFIG.prestigeMult}倍】にしますか？\n（獲得した称号は失われません）`)) {
+            state.multiplier *= CONFIG.prestigeMult;
+            state.score = 0; state.totalScore = 0;
+            for (let key in state.inventory) state.inventory[key] = 0;
+            state.prestigeCount++;
+            
+            // 転生直後にも念のため実績チェック
+            this.checkAchievements(); 
+            this.save();
+            location.reload();
+        }
+    },
+
+    checkSecret() {
+        if (isWiping) return;
+        const inputUI = document.getElementById('secret-input');
+        const hex = toHex(inputUI.value);
+        const action = CONFIG.secrets[hex];
+
+        if (action === "bonus10000") {
+            this.triggerEffect(10000, "SYSTEM OVERRIDE // 10,000pt 獲得");
+        } else if (action === "fever") {
+            tempBuff = 10;
+            this.triggerEffect(0, "LIMITER RELEASED // 5秒間クリック10倍");
+            setTimeout(() => { tempBuff = 1; }, 5000);
+        } else if (action === "wipeAll") {
+            this.triggerWipeSequence();
+        } else {
+            alert("ACCESS DENIED // 不正なコードです");
+        }
+        
+        inputUI.value = ""; 
+    },
+
+    // 🖥️ RGB分離・デジタルグリッチ演出からの実績獲得
+    triggerWipeSequence() {
+        isWiping = true;
+        document.getElementById('secret-input').blur(); 
+
+        let intensity = 0;
+        const ui = document.getElementById('main-ui');
+
+        const glitchInterval = setInterval(() => {
+            intensity += 0.05;
+
+            const offset = intensity * 15;
+            ui.style.textShadow = `-${offset}px 0 red, ${offset}px 0 cyan`;
+
+            if (Math.random() < intensity) {
+                const top = Math.random() * 100;
+                const bottom = Math.random() * 100;
+                const min = Math.min(top, bottom);
+                const max = Math.max(top, bottom);
+                ui.style.clipPath = `inset(${min}% 0 ${100 - max}% 0)`;
+                ui.style.transform = `translateX(${(Math.random() - 0.5) * intensity * 100}px)`;
+            } else {
+                ui.style.clipPath = 'none';
+                ui.style.transform = 'none';
+            }
+
+            if (Math.random() < intensity * 0.5) {
+                ui.style.filter = `invert(1) hue-rotate(${Math.random() * 360}deg) contrast(200%)`;
+            } else {
+                ui.style.filter = 'none';
+            }
+
+        }, 50);
+
+        setTimeout(() => {
+            clearInterval(glitchInterval);
+            
+            ui.style.textShadow = '';
+            ui.style.clipPath = 'none';
+            ui.style.transform = 'none';
+            ui.style.filter = 'none';
+            
+            document.getElementById('main-ui').style.display = 'none';
+            document.getElementById('bsod').style.display = 'block';
+
+            // データをすべて無に帰す
+            state.score = 0;
+            state.totalScore = 0;
+            state.multiplier = 1.0;
+            state.prestigeCount = 0;
+            for (let key in state.inventory) state.inventory[key] = 0;
+            state.titles = []; 
+            
+            this.save();
+
+            // BSoD表示から1.5秒後に隠し実績がポップアップ
+            setTimeout(() => {
+                this.unlockTitle("たのしかったね");
+            }, 1500);
+
+        }, 4000);
+    },
+
+    // 🏆 実績の獲得とポップアップ通知
+    unlockTitle(titleName) {
+        if (!state.titles.includes(titleName)) {
+            state.titles.push(titleName);
+            this.renderTitles();
+            this.save();
+            
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'achievement-toast';
+            toast.innerHTML = `
+                <div class="toast-header">ACHIEVEMENT UNLOCKED</div>
+                <div class="toast-body">実績　「${titleName}」　獲得</div>
+            `;
+            container.appendChild(toast);
+            
+            // アニメーション完了後にDOMから削除
+            setTimeout(() => toast.remove(), 5500); 
+        }
+    },
+
+    triggerEffect(bonus, msg) {
+        document.body.classList.add('crt-active');
+        state.score += bonus;
+        state.totalScore += bonus;
+        alert(msg);
+        setTimeout(() => document.body.classList.remove('crt-active'), 5000);
+        this.updateUI();
+    },
+
+    createParticle(text, isError = false, xPos = null, yPos = null) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        const x = xPos !== null ? xPos + (Math.random() * 40 - 20) : (Math.random() * window.innerWidth);
+        const y = yPos !== null ? yPos + (Math.random() * 40 - 20) : (Math.random() * window.innerHeight);
+        p.style.left = `${x}px`; p.style.top = `${y}px`;
+        p.style.color = isError ? 'red' : 'var(--theme-click)';
+        p.innerText = text;
+        document.body.appendChild(p);
+        setTimeout(() => p.remove(), 800);
+    },
+
+    renderTitles() {
+        const titleArea = document.getElementById('ui-titles-area');
+        titleArea.innerHTML = '';
+        if (state.titles && state.titles.length > 0) {
+            state.titles.forEach(title => {
+                const badge = document.createElement('span');
+                badge.className = 'title-badge';
+                badge.innerText = `★ ${title}`;
+                titleArea.appendChild(badge);
+            });
+        }
+    },
+
+    updateUI() {
+        const stats = this.calcStats();
+        document.getElementById('ui-score').innerText = Math.floor(state.score).toLocaleString();
+        document.getElementById('ui-total-score').innerText = Math.floor(state.totalScore).toLocaleString();
+        document.getElementById('ui-mult').innerText = state.multiplier.toFixed(2) + 'x';
+        document.getElementById('ui-click-power').innerText = (stats.clickPower * state.multiplier * tempBuff).toFixed(1);
+        document.getElementById('ui-mps').innerText = (stats.mps * state.multiplier).toFixed(1);
+        
+        CONFIG.items.forEach(item => {
+            const el = document.getElementById(`shop-item-${item.id}`);
+            if (el) {
+                const cost = this.getCost(item);
+                el.querySelector('.cost-display').innerText = Math.floor(cost).toLocaleString();
+                if (state.score >= cost) el.classList.remove('disabled');
+                else el.classList.add('disabled');
+            }
+        });
+    },
+
+    renderShop() {
+        const list = document.getElementById('shop-list');
+        list.innerHTML = '';
+        CONFIG.items.forEach(item => {
+            const count = state.inventory[item.id];
+            const div = document.createElement('div');
+            div.id = `shop-item-${item.id}`;
+            div.className = `shop-item type-${item.type}`;
+            div.innerHTML = `
+                <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                    <span>${item.name}</span>
+                    <span>Lv.${count}</span>
+                </div>
+                <div style="font-size: 0.8rem; color: #aaa; margin: 4px 0;">${item.desc}</div>
+                <div style="font-size: 0.85rem; color: var(--theme-click);">コスト: <span class="cost-display">0</span></div>
+            `;
+            div.onclick = () => this.buy(item.id);
+            list.appendChild(div);
+        });
+    },
+
+    save() {
+        state.lastTick = Date.now();
+        localStorage.setItem(CONFIG.saveKey, JSON.stringify(state));
+    },
+
+    load() {
+        const saved = localStorage.getItem(CONFIG.saveKey);
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            Object.assign(state, parsed);
+            if (!state.titles) state.titles = []; 
+            
+            const diff = (Date.now() - state.lastTick) / 1000;
+            if (diff > 10 && !isWiping) {
+                const stats = this.calcStats();
+                const offlineGain = (stats.mps * state.multiplier) * diff;
+                if (offlineGain > 0) {
+                    state.score += offlineGain;
+                    state.totalScore += offlineGain;
+                    alert(`SYSTEM: オフライン収益\n不在の間に ${Math.floor(offlineGain).toLocaleString()} pt 稼ぎました。`);
+                }
+            }
+        }
+    }
+};
+
+window.onload = () => GAME.init();
+</script>
 </body>
 </html>
