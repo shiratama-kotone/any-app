@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Clear JST Signal</title>
+    <title>とけい</title>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@700&display=swap" rel="stylesheet">
     <style>
         body { 
@@ -27,42 +27,40 @@
         let audioCtx = null;
         const timeDisplay = document.getElementById('time');
         const startBtn = document.getElementById('startBtn');
-        let lastSecond = -1;
+        let lastScheduledSecond = -1;
 
+        // タイマー精度を上げるためにWorkerの間隔を短縮
         const workerCode = `
-            setInterval(() => { self.postMessage('tick'); }, 50);
+            setInterval(() => { self.postMessage('tick'); }, 25);
         `;
         const blob = new Blob([workerCode], { type: 'application/javascript' });
         const worker = new Worker(URL.createObjectURL(blob));
 
-        function playClearTone(freq, durationMs, volume, isLinearDecay = false) {
-            if (!audioCtx) return;
+        function playClearTone(freq, durationMs, volume, targetTime, isLinearDecay = false) {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             
             osc.type = 'sine';
             osc.frequency.value = freq;
             
-            const now = audioCtx.currentTime;
             const durationSec = durationMs / 1000;
             
-            gain.gain.setValueAtTime(0, now);
-            // 立ち上がりのアタックをわずかに追加して「パチッ」を防ぐ
-            gain.gain.linearRampToValueAtTime(volume, now + 0.002);
+            // 未来の「targetTime」を基準にエンベロープを組む
+            gain.gain.setValueAtTime(0, targetTime);
+            gain.gain.linearRampToValueAtTime(volume, targetTime + 0.002);
             
             if (isLinearDecay) {
-                // 10秒ごとの直線的減衰
-                gain.gain.linearRampToValueAtTime(0, now + durationSec);
+                gain.gain.linearRampToValueAtTime(0, targetTime + durationSec);
             } else {
-                // 短音も終わり際に極短のフェードを入れ、クリックノイズ（ガビガビ）を消す
-                gain.gain.setValueAtTime(volume, now + durationSec - 0.002);
-                gain.gain.linearRampToValueAtTime(0, now + durationSec);
+                // 響きを出すための指数減衰
+                gain.gain.exponentialRampToValueAtTime(0.001, targetTime + durationSec);
             }
             
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-            osc.start(now);
-            osc.stop(now + durationSec);
+            
+            osc.start(targetTime);
+            osc.stop(targetTime + durationSec);
         }
 
         function getJST() {
@@ -72,27 +70,41 @@
         }
 
         worker.onmessage = function() {
+            if (!audioCtx) {
+                // 画面表示だけは更新
+                const jstNow = getJST();
+                timeDisplay.textContent = jstNow.toTimeString().split(' ')[0];
+                return;
+            }
+
             const jstNow = getJST();
-            const s = jstNow.getSeconds();
-            
+            const currentSec = jstNow.getSeconds();
             timeDisplay.textContent = jstNow.toTimeString().split(' ')[0];
 
-            if (s !== lastSecond) {
-                if (audioCtx) {
-                    // 1秒毎: 2000Hz / 20ms
-                    playClearTone(2000, 20, 0.15);
+            // 0.1秒先の「次の秒」を予約対象にする
+            const lookAheadTime = new Date(jstNow.getTime() + 100); 
+            const scheduledSec = lookAheadTime.getSeconds();
 
-                    // 10秒毎: 1000Hz / 2000ms (直線減衰)
-                    if (s % 10 === 0) {
-                        playClearTone(1000, 2000, 0.2, true);
-                    }
+            // まだ予約していない秒であれば予約を実行
+            if (scheduledSec !== lastScheduledSecond) {
+                // オーディオ上の「今」から計算した「次のジャスト秒」の絶対時刻
+                const msUntilNextSec = 1000 - lookAheadTime.getMilliseconds();
+                const targetAudioTime = audioCtx.currentTime + (msUntilNextSec / 1000);
 
-                    // 予告音: 500Hz / 200ms (27-29, 57-59秒)
-                    if ((s >= 27 && s <= 29) || (s >= 57 && s <= 59)) {
-                        playClearTone(500, 200, 0.15);
-                    }
+                // 1秒毎
+                playClearTone(2000, 20, 0.15, targetAudioTime);
+
+                // 10秒毎
+                if (scheduledSec % 10 === 0) {
+                    playClearTone(1000, 2000, 0.2, targetAudioTime, true);
                 }
-                lastSecond = s;
+
+                // 予告音
+                if ((scheduledSec >= 27 && scheduledSec <= 29) || (scheduledSec >= 57 && scheduledSec <= 59)) {
+                    playClearTone(500, 200, 0.15, targetAudioTime);
+                }
+
+                lastScheduledSecond = scheduledSec;
             }
         };
 
