@@ -1,53 +1,105 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <title>時計</title>
-  <link rel="stylesheet" href="https://raw.githubusercontent.com/shiratama-kotone/any-app/refs/heads/main/app/time/style.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic&family=Orbitron:wght@500&family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
-  <link id="dynamic-favicon" rel="icon" href="">
-  <style>
-    html {
-      font-family: "Zen Maru Gothic", sans-serif;
-      transition: background-color 1s, color 1s;
-    }
-    body.dark {
-      background-color: #222;
-      color: #fff;
-    }
-    #clock-container { text-align:center; margin-top:50px; }
-    #controls { margin-top:20px; }
-    select, button { margin:5px; }
-    canvas { display:none; }
-  </style>
+    <meta charset="UTF-8">
+    <title>Clear JST Signal</title>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            background: #000; color: #fff; font-family: 'M PLUS 1p', sans-serif; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            height: 100vh; margin: 0; overflow: hidden;
+        }
+        #time { font-size: 10rem; font-variant-numeric: tabular-nums; line-height: 1; }
+        button { 
+            padding: 20px 60px; font-size: 1.5rem; cursor: pointer; 
+            background: #fff; color: #000; border: none; font-weight: bold; font-family: 'M PLUS 1p', sans-serif;
+        }
+    </style>
 </head>
 <body>
-  <div id="clock-container">
-    <p id="realtime"></p>
-    <canvas id="analog-canvas" width="200" height="200"></canvas>
-    <div id="info-bottom">
-      <p id="date-display"></p>
-      <p id="ampm-display"></p>
-    </div>
-    <div id="controls">
-  <button id="toggle-mode">アナログに変更</button>
-  <span id="font-wrapper">
-    <label>フォント選択:
-      <select id="font-select">
-        <option value="default">デフォルト</option>
-        <option value='"Zen Maru Gothic", sans-serif'>Zen Maru Gothic</option>
-        <option value='"Orbitron", sans-serif'>7/14セグ風</option>
-        <option value='"Comic Neue", cursive'>Comic Sans風</option>
-      </select>
-    </label>
-  </span>
-  <button id="toggle-dark">ダークモード切替</button>
-</div>
 
-  </div>
-  <script src="script.js"></script>
+    <div id="time">00:00:00</div>
+    <br>
+    <button id="startBtn">ACCESS (SOUND ON)</button>
+
+    <script>
+        let audioCtx = null;
+        const timeDisplay = document.getElementById('time');
+        const startBtn = document.getElementById('startBtn');
+        let lastSecond = -1;
+
+        const workerCode = `
+            setInterval(() => { self.postMessage('tick'); }, 50);
+        `;
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        const worker = new Worker(URL.createObjectURL(blob));
+
+        function playClearTone(freq, durationMs, volume, isLinearDecay = false) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            
+            const now = audioCtx.currentTime;
+            const durationSec = durationMs / 1000;
+            
+            gain.gain.setValueAtTime(0, now);
+            // 立ち上がりのアタックをわずかに追加して「パチッ」を防ぐ
+            gain.gain.linearRampToValueAtTime(volume, now + 0.002);
+            
+            if (isLinearDecay) {
+                // 10秒ごとの直線的減衰
+                gain.gain.linearRampToValueAtTime(0, now + durationSec);
+            } else {
+                // 短音も終わり際に極短のフェードを入れ、クリックノイズ（ガビガビ）を消す
+                gain.gain.setValueAtTime(volume, now + durationSec - 0.002);
+                gain.gain.linearRampToValueAtTime(0, now + durationSec);
+            }
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + durationSec);
+        }
+
+        function getJST() {
+            const now = new Date();
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            return new Date(utc + (3600000 * 9));
+        }
+
+        worker.onmessage = function() {
+            const jstNow = getJST();
+            const s = jstNow.getSeconds();
+            
+            timeDisplay.textContent = jstNow.toTimeString().split(' ')[0];
+
+            if (s !== lastSecond) {
+                if (audioCtx) {
+                    // 1秒毎: 2000Hz / 20ms
+                    playClearTone(2000, 20, 0.15);
+
+                    // 10秒毎: 1000Hz / 2000ms (直線減衰)
+                    if (s % 10 === 0) {
+                        playClearTone(1000, 2000, 0.2, true);
+                    }
+
+                    // 予告音: 500Hz / 200ms (27-29, 57-59秒)
+                    if ((s >= 27 && s <= 29) || (s >= 57 && s <= 59)) {
+                        playClearTone(500, 200, 0.15);
+                    }
+                }
+                lastSecond = s;
+            }
+        };
+
+        startBtn.addEventListener('click', () => {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            startBtn.style.display = 'none';
+        });
+    </script>
 </body>
 </html>
