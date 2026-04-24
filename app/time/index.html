@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>とけい</title>
+    <title>Clear JST Signal - Professional</title>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@700&display=swap" rel="stylesheet">
     <style>
         body { 
@@ -19,24 +19,24 @@
 </head>
 <body>
 
-    <div id="time">11:45:14</div>
+    <div id="time">00:00:00</div>
     <br>
     <button id="startBtn">ACCESS (SOUND ON)</button>
 
     <script>
         let audioCtx = null;
+        let masterLimiter = null; // 音割れ防止用のリミッター
         const timeDisplay = document.getElementById('time');
         const startBtn = document.getElementById('startBtn');
-        let lastScheduledSecond = -1; // ここを予約済み秒数の記録に変更
+        let lastScheduledSecond = -1;
 
-        // 判定頻度を少しだけ上げて音飛びを防ぐ
         const workerCode = `
             setInterval(() => { self.postMessage('tick'); }, 20);
         `;
         const blob = new Blob([workerCode], { type: 'application/javascript' });
         const worker = new Worker(URL.createObjectURL(blob));
 
-        // ★ 音の作りは一切変えていません
+        // ★ 音の作りは変えずに、出力先をリミッターに変更
         function playClearTone(freq, durationMs, volume, startTime, isLinearDecay = false) {
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
@@ -58,7 +58,8 @@
             }
             
             osc.connect(gain);
-            gain.connect(audioCtx.destination);
+            // 直接 destination に繋がず、リミッターに繋ぐ
+            gain.connect(masterLimiter);
             osc.start(startTime);
             osc.stop(startTime + durationSec);
         }
@@ -71,22 +72,20 @@
 
         worker.onmessage = function() {
             const jstNow = getJST();
-            const ms = jstNow.getMilliseconds();
-            
             timeDisplay.textContent = jstNow.toTimeString().split(' ')[0];
 
             if (!audioCtx) return;
 
-            // 「次の秒」が100ms以内に来るかチェック（先読み予約）
-            const lookAheadTime = new Date(jstNow.getTime() + 100);
+            // 0.2秒先まで見て、次の秒を予約
+            const lookAheadTime = new Date(jstNow.getTime() + 200);
             const s = lookAheadTime.getSeconds();
 
             if (s !== lastScheduledSecond) {
-                // オーディオ回路上の「次の正秒」の正確な時刻を計算
-                const delayUntilNextSec = (1000 - lookAheadTime.getMilliseconds()) / 1000;
+                // 次の000ミリ秒（正秒）の時刻を計算
+                const nextSecondMs = Math.ceil(lookAheadTime.getTime() / 1000) * 1000;
+                const delayUntilNextSec = (nextSecondMs - Date.now()) / 1000;
                 const startTime = audioCtx.currentTime + delayUntilNextSec;
 
-                // --- 鳴動ロジックはそのまま ---
                 // 1秒毎
                 playClearTone(2000, 20, 0.15, startTime);
 
@@ -106,6 +105,17 @@
 
         startBtn.addEventListener('click', () => {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // 音割れ防止設定: DynamicsCompressorNode
+            masterLimiter = audioCtx.createDynamicsCompressor();
+            masterLimiter.threshold.setValueAtTime(-1, audioCtx.currentTime); // 限界の少し手前で抑える
+            masterLimiter.knee.setValueAtTime(0, audioCtx.currentTime);
+            masterLimiter.ratio.setValueAtTime(20, audioCtx.currentTime); // 強く抑える
+            masterLimiter.attack.setValueAtTime(0.001, audioCtx.currentTime);
+            masterLimiter.release.setValueAtTime(0.1, audioCtx.currentTime);
+            
+            masterLimiter.connect(audioCtx.destination);
+            
             startBtn.style.display = 'none';
         });
     </script>
