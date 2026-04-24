@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Perfect JST Clock</title>
+    <title>Perfect JST Clock - Distortion Free</title>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@700&display=swap" rel="stylesheet">
     <style>
         body { 
@@ -25,10 +25,11 @@
 
     <script>
         let audioCtx = null;
-        let masterLimiter = null;
+        let masterGain = null; // 全体ボリューム
+        let masterLimiter = null; // 音割れ防止
         const timeDisplay = document.getElementById('time');
         const startBtn = document.getElementById('startBtn');
-        let lastScheduledSecond = -1;
+        let lastScheduledTime = -1;
 
         const workerCode = `
             setInterval(() => { self.postMessage('tick'); }, 10);
@@ -43,30 +44,33 @@
             osc.type = 'sine';
             osc.frequency.value = freq;
             const durationSec = durationMs / 1000;
+            
             gain.gain.setValueAtTime(0, startTime);
             gain.gain.linearRampToValueAtTime(volume, startTime + 0.002);
+            
             if (isLinearDecay) {
                 gain.gain.linearRampToValueAtTime(0, startTime + durationSec);
             } else {
                 gain.gain.setValueAtTime(volume, startTime + durationSec - 0.002);
                 gain.gain.linearRampToValueAtTime(0, startTime + durationSec);
             }
+            
             osc.connect(gain);
+            // 個別のGainをマスターリミッターへ接続
             gain.connect(masterLimiter);
             osc.start(startTime);
             osc.stop(startTime + durationSec);
         }
 
-        // バックグラウンド維持のための「無音の心臓」
         function startSilentHeartbeat() {
             const buffer = audioCtx.createBuffer(1, 1, 22050);
             const source = audioCtx.createBufferSource();
             source.buffer = buffer;
             source.loop = true;
             const gain = audioCtx.createGain();
-            gain.gain.value = 0.0001; // ほぼ無音
+            gain.gain.value = 0.00001; 
             source.connect(gain);
-            gain.connect(audioCtx.destination);
+            gain.connect(masterLimiter);
             source.start();
         }
 
@@ -77,40 +81,49 @@
         }
 
         worker.onmessage = function() {
+            const nowTime = Date.now();
             const jstNow = getJST();
             timeDisplay.textContent = jstNow.toTimeString().split(' ')[0];
 
             if (!audioCtx) return;
 
-            // 0.3秒先を予約することでさらに安定させる
-            const lookAheadTime = new Date(jstNow.getTime() + 300);
-            const s = lookAheadTime.getSeconds();
-
-            if (s !== lastScheduledSecond) {
-                const nextSecondMs = Math.ceil(lookAheadTime.getTime() / 1000) * 1000;
-                const delayUntilNextSec = (nextSecondMs - Date.now()) / 1000;
+            // 0.2秒先までのジャスト秒を狙う
+            const nextSyncTime = Math.floor(nowTime / 1000) * 1000 + 1000;
+            
+            if (nextSyncTime !== lastScheduledTime && (nextSyncTime - nowTime) < 200) {
+                const s = new Date(nextSyncTime).getSeconds();
+                const delayUntilNextSec = (nextSyncTime - nowTime) / 1000;
                 const startTime = audioCtx.currentTime + delayUntilNextSec;
 
-                if (startTime > audioCtx.currentTime) {
-                    playClearTone(2000, 20, 0.15, startTime);
-                    if (s % 10 === 0) playClearTone(1000, 2000, 0.2, startTime, true);
-                    if ((s >= 27 && s <= 29) || (s >= 57 && s <= 59)) playClearTone(500, 200, 0.15, startTime);
-                    lastScheduledSecond = s;
-                }
+                // 各音のバランスを調整（合計が1.0を超えにくくする）
+                playClearTone(2000, 20, 0.12, startTime);
+                if (s % 10 === 0) playClearTone(1000, 2000, 0.15, startTime, true);
+                if ((s >= 27 && s <= 29) || (s >= 57 && s <= 59)) playClearTone(500, 200, 0.12, startTime);
+
+                lastScheduledTime = nextSyncTime;
             }
         };
 
         startBtn.addEventListener('click', () => {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            masterLimiter = audioCtx.createDynamicsCompressor();
-            masterLimiter.threshold.setValueAtTime(-1, audioCtx.currentTime);
-            masterLimiter.knee.setValueAtTime(0, audioCtx.currentTime);
-            masterLimiter.ratio.setValueAtTime(20, audioCtx.currentTime);
-            masterLimiter.attack.setValueAtTime(0.001, audioCtx.currentTime);
-            masterLimiter.release.setValueAtTime(0.1, audioCtx.currentTime);
-            masterLimiter.connect(audioCtx.destination);
             
-            startSilentHeartbeat(); // 無音再生を開始
+            // 1. マスターボリューム調整
+            masterGain = audioCtx.createGain();
+            masterGain.gain.setValueAtTime(0.8, audioCtx.currentTime);
+
+            // 2. 音割れ防止用の強力なリミッター
+            masterLimiter = audioCtx.createDynamicsCompressor();
+            masterLimiter.threshold.setValueAtTime(-0.5, audioCtx.currentTime); // 限界寸前で抑える
+            masterLimiter.knee.setValueAtTime(0, audioCtx.currentTime);       // パキッと抑える
+            masterLimiter.ratio.setValueAtTime(20, audioCtx.currentTime);     // 強く圧縮
+            masterLimiter.attack.setValueAtTime(0.001, audioCtx.currentTime); // 即座に反応
+            masterLimiter.release.setValueAtTime(0.1, audioCtx.currentTime);
+
+            // 接続: 各音 -> Limiter -> MasterGain -> Speaker
+            masterLimiter.connect(masterGain);
+            masterGain.connect(audioCtx.destination);
+            
+            startSilentHeartbeat();
             startBtn.style.display = 'none';
         });
     </script>
