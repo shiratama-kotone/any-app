@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Clear JST Signal - Professional</title>
+    <title>Perfect JST Clock</title>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@700&display=swap" rel="stylesheet">
     <style>
         body { 
@@ -25,43 +25,49 @@
 
     <script>
         let audioCtx = null;
-        let masterLimiter = null; // 音割れ防止用のリミッター
+        let masterLimiter = null;
         const timeDisplay = document.getElementById('time');
         const startBtn = document.getElementById('startBtn');
         let lastScheduledSecond = -1;
 
         const workerCode = `
-            setInterval(() => { self.postMessage('tick'); }, 20);
+            setInterval(() => { self.postMessage('tick'); }, 10);
         `;
         const blob = new Blob([workerCode], { type: 'application/javascript' });
         const worker = new Worker(URL.createObjectURL(blob));
 
-        // ★ 音の作りは変えずに、出力先をリミッターに変更
         function playClearTone(freq, durationMs, volume, startTime, isLinearDecay = false) {
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            
             osc.type = 'sine';
             osc.frequency.value = freq;
-            
             const durationSec = durationMs / 1000;
-            
             gain.gain.setValueAtTime(0, startTime);
             gain.gain.linearRampToValueAtTime(volume, startTime + 0.002);
-            
             if (isLinearDecay) {
                 gain.gain.linearRampToValueAtTime(0, startTime + durationSec);
             } else {
                 gain.gain.setValueAtTime(volume, startTime + durationSec - 0.002);
                 gain.gain.linearRampToValueAtTime(0, startTime + durationSec);
             }
-            
             osc.connect(gain);
-            // 直接 destination に繋がず、リミッターに繋ぐ
             gain.connect(masterLimiter);
             osc.start(startTime);
             osc.stop(startTime + durationSec);
+        }
+
+        // バックグラウンド維持のための「無音の心臓」
+        function startSilentHeartbeat() {
+            const buffer = audioCtx.createBuffer(1, 1, 22050);
+            const source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.loop = true;
+            const gain = audioCtx.createGain();
+            gain.gain.value = 0.0001; // ほぼ無音
+            source.connect(gain);
+            gain.connect(audioCtx.destination);
+            source.start();
         }
 
         function getJST() {
@@ -76,46 +82,35 @@
 
             if (!audioCtx) return;
 
-            // 0.2秒先まで見て、次の秒を予約
-            const lookAheadTime = new Date(jstNow.getTime() + 200);
+            // 0.3秒先を予約することでさらに安定させる
+            const lookAheadTime = new Date(jstNow.getTime() + 300);
             const s = lookAheadTime.getSeconds();
 
             if (s !== lastScheduledSecond) {
-                // 次の000ミリ秒（正秒）の時刻を計算
                 const nextSecondMs = Math.ceil(lookAheadTime.getTime() / 1000) * 1000;
                 const delayUntilNextSec = (nextSecondMs - Date.now()) / 1000;
                 const startTime = audioCtx.currentTime + delayUntilNextSec;
 
-                // 1秒毎
-                playClearTone(2000, 20, 0.15, startTime);
-
-                // 10秒毎
-                if (s % 10 === 0) {
-                    playClearTone(1000, 2000, 0.2, startTime, true);
+                if (startTime > audioCtx.currentTime) {
+                    playClearTone(2000, 20, 0.15, startTime);
+                    if (s % 10 === 0) playClearTone(1000, 2000, 0.2, startTime, true);
+                    if ((s >= 27 && s <= 29) || (s >= 57 && s <= 59)) playClearTone(500, 200, 0.15, startTime);
+                    lastScheduledSecond = s;
                 }
-
-                // 予告音
-                if ((s >= 27 && s <= 29) || (s >= 57 && s <= 59)) {
-                    playClearTone(500, 200, 0.15, startTime);
-                }
-
-                lastScheduledSecond = s;
             }
         };
 
         startBtn.addEventListener('click', () => {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // 音割れ防止設定: DynamicsCompressorNode
             masterLimiter = audioCtx.createDynamicsCompressor();
-            masterLimiter.threshold.setValueAtTime(-1, audioCtx.currentTime); // 限界の少し手前で抑える
+            masterLimiter.threshold.setValueAtTime(-1, audioCtx.currentTime);
             masterLimiter.knee.setValueAtTime(0, audioCtx.currentTime);
-            masterLimiter.ratio.setValueAtTime(20, audioCtx.currentTime); // 強く抑える
+            masterLimiter.ratio.setValueAtTime(20, audioCtx.currentTime);
             masterLimiter.attack.setValueAtTime(0.001, audioCtx.currentTime);
             masterLimiter.release.setValueAtTime(0.1, audioCtx.currentTime);
-            
             masterLimiter.connect(audioCtx.destination);
             
+            startSilentHeartbeat(); // 無音再生を開始
             startBtn.style.display = 'none';
         });
     </script>
