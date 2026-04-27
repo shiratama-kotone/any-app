@@ -1,209 +1,213 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TJA改造ツール</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TJA改造ツール</title>
 
-<link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css">
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
 </head>
 <body>
 
 <h2>🔥 TJA改造ツール</h2>
 
-<input type="file" id="file"><br>
-<textarea id="input"></textarea>
+<input type="file" id="file" accept=".tja,.zip"><br>
+<textarea id="input" placeholder="ここにTJAの内容が表示されます"></textarea>
 
 <h3>密度</h3>
-倍率 <input id="rate" value="10">
+倍率 <input type="number" id="rate" value="10" min="1">
 
-<h3>HS変換（0で無効）</h3>
-Easy <input id="easy" value="0">
-Normal <input id="normal" value="0">
-Hard <input id="hard" value="0">
-Oni <input id="oni" value="0">
-Edit <input id="edit" value="0">
+<h3>HS変換（0で無効 / 小節ごとに加算）</h3>
+Easy <input type="number" id="easy" step="0.1" value="0">
+Normal <input type="number" id="normal" step="0.1" value="0">
+Hard <input type="number" id="hard" step="0.1" value="0">
+Oni <input type="number" id="oni" step="0.1" value="0">
+Edit <input type="number" id="edit" step="0.1" value="0">
 
 <h3>ノーツ変換</h3>
 <select id="mode">
-<option value="none">そのまま</option>
-<option value="don">全てドン</option>
-<option value="ka">全てカッ</option>
-<option value="bigdon">全て大ドン</option>
-<option value="bigka">全て大カッ</option>
-<option value="balloon">全てくすだま</option>
+    <option value="none">そのまま</option>
+    <option value="1">全てドン</option>
+    <option value="2">全てカッ</option>
+    <option value="3">全て大ドン</option>
+    <option value="4">全て大カッ</option>
+    <option value="9">全てくすだま</option>
 </select>
 
-<label><input type="checkbox" id="keepRoll" checked>連打そのまま</label>
+<label><input type="checkbox" id="keepRoll" checked>連打も倍増させる</label>
 
 <br>
 <button onclick="convert()">変換</button>
 
 <h3>結果</h3>
-<textarea id="output"></textarea>
+<textarea id="output" readonly></textarea>
 <button onclick="download()">ダウンロード</button>
 
 <script>
-var originalZip=null, originalName="";
-var detectedEncoding="utf-8"; // ←ここ重要
+let originalZip = null;
+let originalName = "";
+let detectedEncoding = "utf-8";
 
-// 🔥文字コード判別
-function decodeAuto(data){
-    var utf8=new TextDecoder("utf-8").decode(data);
-    var bad=(utf8.match(/�/g)||[]).length;
-
-    if(bad<3){
-        detectedEncoding="utf-8";
+// 文字コード判別
+function decodeAuto(data) {
+    const utf8 = new TextDecoder("utf-8").decode(data);
+    const bad = (utf8.match(//g) || []).length;
+    if (bad < 3) {
+        detectedEncoding = "utf-8";
         return utf8;
     }
-
-    detectedEncoding="shift_jis";
+    detectedEncoding = "shift_jis";
     return new TextDecoder("shift_jis").decode(data);
 }
 
-// 🔥元の形式でエンコード
-function encodeByDetected(str){
-    if(detectedEncoding==="shift_jis"){
-        var u=Encoding.stringToCode(str);
-        var s=Encoding.convert(u,"SJIS","UNICODE");
+// エンコード
+function encodeByDetected(str) {
+    if (detectedEncoding === "shift_jis") {
+        const u = Encoding.stringToCode(str);
+        const s = Encoding.convert(u, "SJIS", "UNICODE");
         return new Uint8Array(s);
-    }else{
-        return new TextEncoder().encode(str);
     }
+    return new TextEncoder().encode(str);
 }
 
-// 読み込み
-document.getElementById("file").addEventListener("change", async e=>{
-    var f=e.target.files[0];
-    if(!f)return;
-    originalName=f.name;
+// ファイル読み込み
+document.getElementById("file").addEventListener("change", async e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    originalName = f.name;
 
-    if(f.name.endsWith(".zip")){
-        originalZip=await JSZip.loadAsync(f);
-
-        originalZip.forEach(async (p,en)=>{
-            if(p.endsWith(".tja")){
-                var d=await en.async("uint8array");
-                document.getElementById("input").value=decodeAuto(d);
+    if (f.name.endsWith(".zip")) {
+        originalZip = await JSZip.loadAsync(f);
+        for (const filename of Object.keys(originalZip.files)) {
+            if (filename.endsWith(".tja")) {
+                const d = await originalZip.files[filename].async("uint8array");
+                document.getElementById("input").value = decodeAuto(d);
+                break; 
             }
-        });
-
-    }else{
-        originalZip=null;
-        var r=new FileReader();
-        r.onload=()=>document.getElementById("input").value=r.result;
-        r.readAsText(f);
-        detectedEncoding="utf-8"; // 単体は基本UTF扱い
+        }
+    } else {
+        originalZip = null;
+        const buffer = await f.arrayBuffer();
+        document.getElementById("input").value = decodeAuto(new Uint8Array(buffer));
     }
 });
 
-// ノーツ変換
-function transform(line,rate,mode,keep){
-    return line.replace(/[0-9]/g,c=>{
-        if(keep && "5678".includes(c)) return c.repeat(rate);
-
-        var n=c;
-        if(mode==="don")n="1";
-        if(mode==="ka")n="2";
-        if(mode==="bigdon")n="3";
-        if(mode==="bigka")n="4";
-        if(mode==="balloon")n="9";
-
-        return n.repeat(rate);
-    });
+// ノーツ変換（コンマを維持しつつ数字のみを倍増）
+function transform(line, rate, mode, keepRoll) {
+    // コンマで区切って、各パート内の数字のみを置換
+    return line.split(',').map(part => {
+        return part.replace(/[0-9]/g, c => {
+            // 0（空白）は常に倍増
+            if (c === "0") return "0".repeat(rate);
+            // 連打(5-8)の扱い
+            if ("5678".includes(c) && !keepRoll) return c;
+            
+            let n = c;
+            if (mode !== "none") n = mode;
+            return n.repeat(rate);
+        });
+    }).join(',');
 }
 
-// 本体
-function process(text){
-    var lines=text.split("\n");
+// メイン処理
+function process(text) {
+    const lines = text.split(/\r?\n/);
+    const rate = parseInt(document.getElementById("rate").value) || 1;
+    const mode = document.getElementById("mode").value;
+    const keepRoll = document.getElementById("keepRoll").checked;
 
-    var rate=parseInt(document.getElementById("rate").value)||1;
-    var mode=document.getElementById("mode").value;
-    var keep=document.getElementById("keepRoll").checked;
-
-    var diff={
-        Easy:parseFloat(document.getElementById("easy").value)||0,
-        Normal:parseFloat(document.getElementById("normal").value)||0,
-        Hard:parseFloat(document.getElementById("hard").value)||0,
-        Oni:parseFloat(document.getElementById("oni").value)||0,
-        Edit:parseFloat(document.getElementById("edit").value)||0
+    const diff = {
+        easy: parseFloat(document.getElementById("easy").value) || 0,
+        normal: parseFloat(document.getElementById("normal").value) || 0,
+        hard: parseFloat(document.getElementById("hard").value) || 0,
+        oni: parseFloat(document.getElementById("oni").value) || 0,
+        edit: parseFloat(document.getElementById("edit").value) || 0
     };
 
-    var cur=null,measure=0,inScore=false;
+    let curCourse = "";
+    let measure = 0;
+    let inScore = false;
 
-    for(var i=0;i<lines.length;i++){
-        var l=lines[i];
+    const newLines = [];
+    for (let i = 0; i < lines.length; i++) {
+        let l = lines[i].trim();
 
-        if(l.startsWith("TITLE:")){
-            lines[i]=l+" ("+rate+"倍)";
+        if (l.startsWith("TITLE:")) {
+            newLines.push(l + " (" + rate + "倍)");
+            continue;
         }
 
-        if(l.startsWith("COURSE:")){
-            cur=l.split(":")[1].trim();
-            measure=0;
+        if (l.startsWith("COURSE:")) {
+            const c = l.split(":")[1].trim().toLowerCase();
+            // 数値指定(0~4)にも対応
+            const courseMap = {"0":"easy", "1":"normal", "2":"hard", "3":"oni", "4":"edit"};
+            curCourse = courseMap[c] || c;
+            measure = 0;
         }
 
-        if(l.startsWith("#START")){inScore=true;measure=0;}
-        if(l.startsWith("#END")) inScore=false;
+        if (l.startsWith("#START")) { inScore = true; measure = 0; }
+        if (l.startsWith("#END")) inScore = false;
 
-        if(inScore && !l.startsWith("#")){
+        // ノーツ行の処理
+        if (inScore && l && !l.startsWith("#")) {
             measure++;
-
-            if(diff[cur]!==0){
-                var hs=1+diff[cur]*measure;
-                lines.splice(i,0,"#SCROLL "+hs);
-                i++;
+            // HS加速の挿入
+            if (diff[curCourse] && diff[curCourse] !== 0) {
+                const hs = 1 + (diff[curCourse] * measure);
+                newLines.push("#SCROLL " + hs.toFixed(2));
             }
-
-            lines[i]=transform(l,rate,mode,keep);
+            newLines.push(transform(l, rate, mode, keepRoll));
+        } else {
+            newLines.push(lines[i]);
         }
     }
-
-    return lines.join("\n");
+    return newLines.join("\n");
 }
 
-// 変換
-function convert(){
-    document.getElementById("output").value=
-        process(document.getElementById("input").value);
+function convert() {
+    const txt = document.getElementById("input").value;
+    if(!txt) return alert("データがありません");
+    document.getElementById("output").value = process(txt);
 }
 
-// DL
-async function download(){
-    var rate=parseInt(document.getElementById("rate").value)||1;
+async function download() {
+    const rate = document.getElementById("rate").value;
+    const outputTxt = document.getElementById("output").value;
+    if(!outputTxt) return alert("先に変換してください");
 
-    if(originalZip){
-        var newZip=new JSZip();
-
-        await Promise.all(Object.keys(originalZip.files).map(async p=>{
-            var e=originalZip.files[p];
-            var data=await e.async("uint8array");
-
-            if(p.endsWith(".tja")){
-                var txt=decodeAuto(data);
-                newZip.file(p, encodeByDetected(process(txt)), {binary:true});
-            }else{
-                newZip.file(p,data,{binary:true});
+    if (originalZip) {
+        const newZip = new JSZip();
+        const files = Object.keys(originalZip.files);
+        
+        for(const p of files) {
+            const e = originalZip.files[p];
+            if (p.endsWith(".tja")) {
+                // TJAファイルは変換後の内容を入れる
+                newZip.file(p, encodeByDetected(outputTxt));
+            } else if (!e.dir) {
+                // 音源や画像などはそのままコピー
+                const data = await e.async("uint8array");
+                newZip.file(p, data);
             }
-        }));
+        }
 
-        var blob=await newZip.generateAsync({type:"blob"});
-        var a=document.createElement("a");
-        a.href=URL.createObjectURL(blob);
-        a.download=originalName.replace(".zip"," ("+rate+"倍).zip");
-        a.click();
-
-    }else{
-        var data=encodeByDetected(document.getElementById("output").value);
-        var blob=new Blob([data]);
-        var a=document.createElement("a");
-        a.href=URL.createObjectURL(blob);
-        a.download=originalName.replace(".tja"," ("+rate+"倍).tja");
-        a.click();
+        const blob = await newZip.generateAsync({type: "blob"});
+        saveAs(blob, originalName.replace(".zip", " (" + rate + "倍).zip"));
+    } else {
+        const data = encodeByDetected(outputTxt);
+        const blob = new Blob([data]);
+        saveAs(blob, originalName.replace(".tja", " (" + rate + "倍).tja"));
     }
+}
+
+function saveAs(blob, name) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
 }
 </script>
 
