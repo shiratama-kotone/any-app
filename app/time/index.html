@@ -2,42 +2,86 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Precision JST - Extended</title>
+    <title>OZ Style Precision Monitor</title>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@700&display=swap" rel="stylesheet">
     <style>
         body { 
             background: #000; color: #fff; font-family: 'M PLUS 1p', sans-serif; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            height: 100vh; margin: 0; overflow: hidden;
+            margin: 0; overflow: hidden; height: 100vh;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-        /* 時計全体のコンテナ：中央配置を維持 */
+
+        /* 速報ヘッダー（時計の少し上） */
+        .news-header {
+            width: 80%;
+            max-width: 1000px;
+            height: 60px;
+            border-top: 4px solid #fff;
+            border-bottom: 4px solid #fff;
+            position: absolute;
+            top: 15%; /* 完全に上ではなく、少し余裕を持たせた位置 */
+            display: flex;
+            align-items: center;
+            overflow: hidden; /* はみ出した文字を隠す */
+        }
+
+        /* 流れる黄色い文字 */
+        .marquee {
+            white-space: nowrap;
+            color: #ffff00;
+            font-size: 1.8rem;
+            font-weight: bold;
+            animation: scroll 15s linear infinite;
+            padding-left: 100%; /* 開始位置 */
+        }
+
+        @keyframes scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-200%); }
+        }
+
+        /* 時計コンテナ（中央固定） */
         .clock-container {
             display: flex;
-            align-items: baseline; /* 文字の下端（ベースライン）で揃える */
+            align-items: baseline;
             justify-content: center;
+            position: absolute; /* 他の要素に影響されず中央を維持 */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
         }
-        /* メインの時計 */
-        #time { 
-            font-size: 10rem; 
-            font-variant-numeric: tabular-nums; 
-            line-height: 1;
-        }
-        /* 小数点部分：1/2のサイズ */
-        #ms {
-            font-size: 5rem; 
-            font-variant-numeric: tabular-nums;
-            line-height: 1;
-            margin-left: 10px; /* メイン時計との間隔 */
-            color: rgba(255, 255, 255, 0.8); /* わずかに透過させて副次的な情報であることを強調 */
-        }
+
+        #time { font-size: 10rem; font-variant-numeric: tabular-nums; line-height: 1; }
+        #ms { font-size: 5rem; font-variant-numeric: tabular-nums; line-height: 1; margin-left: 15px; color: rgba(255, 255, 255, 0.7); }
+
         button { 
-            padding: 20px 60px; font-size: 1.5rem; cursor: pointer; 
-            background: #fff; color: #000; border: none; font-weight: bold; font-family: 'M PLUS 1p', sans-serif;
-            margin-top: 40px;
+            position: absolute; bottom: 15%;
+            padding: 15px 50px; font-size: 1.2rem; cursor: pointer; 
+            background: #fff; color: #000; border: none; font-weight: bold;
         }
     </style>
 </head>
 <body>
+
+    <div class="news-header">
+        <div class="marquee">
+            【地震情報】北海道十勝南部で震度5強 津波なし
+            　　　　　　　　　　27日午前5時23分ごろ、北海道の十勝地方南部で震度5強の強い揺れを観測する地震がありました。この地震による津波はありませんでした。
+            　　　　　　　　　　震度5強の揺れを観測したのは北海道の浦幌町で、震度5弱の揺れを北海道の新冠町で観測しました。
+            　　　　　　　　　　震度4の揺れは、いずれも北海道の札幌市清田区、函館市、釧路市、帯広市、三笠市、千歳市などで観測したほか青森県の階上町でも観測しています。
+            　　　　　　　　　　このほか震度3の揺れを、札幌市の北区や東区、白石区、豊平区、北海道の室蘭市、北見市、岩見沢市、苫小牧市などで観測したほか、青森県では八戸市、三沢市、むつ市など、岩手県の盛岡市や久慈市、二戸市などで観測しました。
+
+            　　　　　　　　　　このほか震度2や1の揺れを北海道から東北、関東にかけての広い範囲で観測しました。
+
+            　　　　　　　　　　気象庁の観測によりますと、震源地は北海道十勝地方南部で、震源の深さは83キロ、地震の規模を示すマグニチュードは6.2と推定されています。
+
+            　　　　　　　　　　気象庁地震津波監視課の海老田綾貴課長は、地震後の記者会見で「揺れの強かった地域では、落石や崖崩れなどの危険性が高まっているため、今後の地震活動や雨の状況に十分注意してほしい。今後、1週間程度は最大震度5強程度の地震に注意が必要だ」と呼びかけました。
+
+            　　　　　　　　　　一方、今月20日の三陸沖の大地震を受けて、千島海溝・日本海溝沿いでは巨大地震が発生する可能性がふだんより高まっているとして「北海道・三陸沖後発地震注意情報」が発表されています。
+
+            　　　　　　　　　　27日朝の十勝地方南部の地震について、気象庁はこの情報で注意を呼びかけている対象の地震ではなく、新たに後発地震注意情報を発表する基準には該当しないとしています。
+        </div>
+    </div>
 
     <div class="clock-container">
         <div id="time">00:00:00</div>
@@ -48,16 +92,13 @@
 
     <script>
         let audioCtx = null;
-        let masterGain = null;
         let masterLimiter = null;
         const timeDisplay = document.getElementById('time');
         const msDisplay = document.getElementById('ms');
         const startBtn = document.getElementById('startBtn');
         let lastScheduledTime = -1;
 
-        const workerCode = `
-            setInterval(() => { self.postMessage('tick'); }, 10);
-        `;
+        const workerCode = `setInterval(() => { self.postMessage('tick'); }, 10);`;
         const blob = new Blob([workerCode], { type: 'application/javascript' });
         const worker = new Worker(URL.createObjectURL(blob));
 
@@ -68,33 +109,18 @@
             osc.type = 'sine';
             osc.frequency.value = freq;
             const durationSec = durationMs / 1000;
-            
             gain.gain.setValueAtTime(0, startTime);
             gain.gain.linearRampToValueAtTime(volume, startTime + 0.002);
-            
             if (isLinearDecay) {
                 gain.gain.linearRampToValueAtTime(0, startTime + durationSec);
             } else {
                 gain.gain.setValueAtTime(volume, startTime + durationSec - 0.002);
                 gain.gain.linearRampToValueAtTime(0, startTime + durationSec);
             }
-            
             osc.connect(gain);
             gain.connect(masterLimiter);
             osc.start(startTime);
             osc.stop(startTime + durationSec);
-        }
-
-        function startSilentHeartbeat() {
-            const buffer = audioCtx.createBuffer(1, 1, 22050);
-            const source = audioCtx.createBufferSource();
-            source.buffer = buffer;
-            source.loop = true;
-            const gain = audioCtx.createGain();
-            gain.gain.value = 0.00001; 
-            source.connect(gain);
-            gain.connect(masterLimiter);
-            source.start();
         }
 
         function getJST() {
@@ -106,15 +132,12 @@
         worker.onmessage = function() {
             const nowTime = Date.now();
             const jstNow = getJST();
-            
-            // 表示の更新
             timeDisplay.textContent = jstNow.toTimeString().split(' ')[0];
             msDisplay.textContent = "." + String(jstNow.getMilliseconds()).padStart(3, '0');
 
             if (!audioCtx) return;
 
             const nextSyncTime = Math.floor(nowTime / 1000) * 1000 + 1000;
-            
             if (nextSyncTime !== lastScheduledTime && (nextSyncTime - nowTime) < 200) {
                 const s = new Date(nextSyncTime).getSeconds();
                 const delayUntilNextSec = (nextSyncTime - nowTime) / 1000;
@@ -130,17 +153,8 @@
 
         startBtn.addEventListener('click', () => {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            masterGain = audioCtx.createGain();
-            masterGain.gain.setValueAtTime(0.8, audioCtx.currentTime);
             masterLimiter = audioCtx.createDynamicsCompressor();
-            masterLimiter.threshold.setValueAtTime(-0.5, audioCtx.currentTime);
-            masterLimiter.knee.setValueAtTime(0, audioCtx.currentTime);
-            masterLimiter.ratio.setValueAtTime(20, audioCtx.currentTime);
-            masterLimiter.attack.setValueAtTime(0.001, audioCtx.currentTime);
-            masterLimiter.release.setValueAtTime(0.1, audioCtx.currentTime);
-            masterLimiter.connect(masterGain);
-            masterGain.connect(audioCtx.destination);
-            startSilentHeartbeat();
+            masterLimiter.connect(audioCtx.destination);
             startBtn.style.display = 'none';
         });
     </script>
