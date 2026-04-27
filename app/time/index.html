@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Perfect JST Clock - Distortion Free</title>
+    <title>Precision JST - Extended</title>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@700&display=swap" rel="stylesheet">
     <style>
         body { 
@@ -10,24 +10,48 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
             height: 100vh; margin: 0; overflow: hidden;
         }
-        #time { font-size: 10rem; font-variant-numeric: tabular-nums; line-height: 1; }
+        /* 時計全体のコンテナ：中央配置を維持 */
+        .clock-container {
+            display: flex;
+            align-items: baseline; /* 文字の下端（ベースライン）で揃える */
+            justify-content: center;
+        }
+        /* メインの時計 */
+        #time { 
+            font-size: 10rem; 
+            font-variant-numeric: tabular-nums; 
+            line-height: 1;
+        }
+        /* 小数点部分：1/2のサイズ */
+        #ms {
+            font-size: 5rem; 
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+            margin-left: 10px; /* メイン時計との間隔 */
+            color: rgba(255, 255, 255, 0.8); /* わずかに透過させて副次的な情報であることを強調 */
+        }
         button { 
             padding: 20px 60px; font-size: 1.5rem; cursor: pointer; 
             background: #fff; color: #000; border: none; font-weight: bold; font-family: 'M PLUS 1p', sans-serif;
+            margin-top: 40px;
         }
     </style>
 </head>
 <body>
 
-    <div id="time">00:00:00</div>
-    <br>
+    <div class="clock-container">
+        <div id="time">00:00:00</div>
+        <div id="ms">.000</div>
+    </div>
+    
     <button id="startBtn">ACCESS (SOUND ON)</button>
 
     <script>
         let audioCtx = null;
-        let masterGain = null; // 全体ボリューム
-        let masterLimiter = null; // 音割れ防止
+        let masterGain = null;
+        let masterLimiter = null;
         const timeDisplay = document.getElementById('time');
+        const msDisplay = document.getElementById('ms');
         const startBtn = document.getElementById('startBtn');
         let lastScheduledTime = -1;
 
@@ -56,7 +80,6 @@
             }
             
             osc.connect(gain);
-            // 個別のGainをマスターリミッターへ接続
             gain.connect(masterLimiter);
             osc.start(startTime);
             osc.stop(startTime + durationSec);
@@ -83,11 +106,13 @@
         worker.onmessage = function() {
             const nowTime = Date.now();
             const jstNow = getJST();
+            
+            // 表示の更新
             timeDisplay.textContent = jstNow.toTimeString().split(' ')[0];
+            msDisplay.textContent = "." + String(jstNow.getMilliseconds()).padStart(3, '0');
 
             if (!audioCtx) return;
 
-            // 0.2秒先までのジャスト秒を狙う
             const nextSyncTime = Math.floor(nowTime / 1000) * 1000 + 1000;
             
             if (nextSyncTime !== lastScheduledTime && (nextSyncTime - nowTime) < 200) {
@@ -95,7 +120,6 @@
                 const delayUntilNextSec = (nextSyncTime - nowTime) / 1000;
                 const startTime = audioCtx.currentTime + delayUntilNextSec;
 
-                // 各音のバランスを調整（合計が1.0を超えにくくする）
                 playClearTone(2000, 20, 0.12, startTime);
                 if (s % 10 === 0) playClearTone(1000, 2000, 0.15, startTime, true);
                 if ((s >= 27 && s <= 29) || (s >= 57 && s <= 59)) playClearTone(500, 200, 0.12, startTime);
@@ -106,23 +130,16 @@
 
         startBtn.addEventListener('click', () => {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // 1. マスターボリューム調整
             masterGain = audioCtx.createGain();
             masterGain.gain.setValueAtTime(0.8, audioCtx.currentTime);
-
-            // 2. 音割れ防止用の強力なリミッター
             masterLimiter = audioCtx.createDynamicsCompressor();
-            masterLimiter.threshold.setValueAtTime(-0.5, audioCtx.currentTime); // 限界寸前で抑える
-            masterLimiter.knee.setValueAtTime(0, audioCtx.currentTime);       // パキッと抑える
-            masterLimiter.ratio.setValueAtTime(20, audioCtx.currentTime);     // 強く圧縮
-            masterLimiter.attack.setValueAtTime(0.001, audioCtx.currentTime); // 即座に反応
+            masterLimiter.threshold.setValueAtTime(-0.5, audioCtx.currentTime);
+            masterLimiter.knee.setValueAtTime(0, audioCtx.currentTime);
+            masterLimiter.ratio.setValueAtTime(20, audioCtx.currentTime);
+            masterLimiter.attack.setValueAtTime(0.001, audioCtx.currentTime);
             masterLimiter.release.setValueAtTime(0.1, audioCtx.currentTime);
-
-            // 接続: 各音 -> Limiter -> MasterGain -> Speaker
             masterLimiter.connect(masterGain);
             masterGain.connect(audioCtx.destination);
-            
             startSilentHeartbeat();
             startBtn.style.display = 'none';
         });
