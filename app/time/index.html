@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>OZ Style Precision Monitor</title>
+    <title>OZ Precision Monitor - Advanced Marquee</title>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@700&display=swap" rel="stylesheet">
     <style>
         body { 
@@ -11,41 +11,41 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
 
-        /* 速報ヘッダー（時計の少し上） */
-        .news-header {
-            width: 80%;
-            max-width: 1000px;
-            height: 60px;
-            border-top: 4px solid #fff;
-            border-bottom: 4px solid #fff;
+        /* 速報ヘッダー */
+        #news-header {
+            width: 90%;
+            max-width: 1200px;
+            height: 65px;
             position: absolute;
-            top: 15%; /* 完全に上ではなく、少し余裕を持たせた位置 */
+            top: 15%;
             display: flex;
             align-items: center;
-            overflow: hidden; /* はみ出した文字を隠す */
+            overflow: hidden;
+            /* 枠線はJSで文字がある時だけ追加する */
         }
 
-        /* 流れる黄色い文字 */
-        .marquee {
+        .border-active {
+            border-top: 4px solid #fff;
+            border-bottom: 4px solid #fff;
+        }
+
+        /* スクロールする中身 */
+        #marquee-content {
+            position: absolute;
             white-space: nowrap;
             color: #ffff00;
             font-size: 1.8rem;
             font-weight: bold;
-            animation: scroll 15s linear infinite;
-            padding-left: 100%; /* 開始位置 */
+            left: 100%; /* 初期位置：右端の外 */
+            will-change: transform;
         }
 
-        @keyframes scroll {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-200%); }
-        }
-
-        /* 時計コンテナ（中央固定） */
+        /* 時計ユニット（中央固定） */
         .clock-container {
             display: flex;
             align-items: baseline;
             justify-content: center;
-            position: absolute; /* 他の要素に影響されず中央を維持 */
+            position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
@@ -55,7 +55,7 @@
         #ms { font-size: 5rem; font-variant-numeric: tabular-nums; line-height: 1; margin-left: 15px; color: rgba(255, 255, 255, 0.7); }
 
         button { 
-            position: absolute; bottom: 15%;
+            position: absolute; bottom: 10%;
             padding: 15px 50px; font-size: 1.2rem; cursor: pointer; 
             background: #fff; color: #000; border: none; font-weight: bold;
         }
@@ -63,24 +63,8 @@
 </head>
 <body>
 
-    <div class="news-header">
-        <div class="marquee">
-            【地震情報】北海道十勝南部で震度5強 津波なし
-            　　　　　　　　　　27日午前5時23分ごろ、北海道の十勝地方南部で震度5強の強い揺れを観測する地震がありました。この地震による津波はありませんでした。
-            　　　　　　　　　　震度5強の揺れを観測したのは北海道の浦幌町で、震度5弱の揺れを北海道の新冠町で観測しました。
-            　　　　　　　　　　震度4の揺れは、いずれも北海道の札幌市清田区、函館市、釧路市、帯広市、三笠市、千歳市などで観測したほか青森県の階上町でも観測しています。
-            　　　　　　　　　　このほか震度3の揺れを、札幌市の北区や東区、白石区、豊平区、北海道の室蘭市、北見市、岩見沢市、苫小牧市などで観測したほか、青森県では八戸市、三沢市、むつ市など、岩手県の盛岡市や久慈市、二戸市などで観測しました。
-
-            　　　　　　　　　　このほか震度2や1の揺れを北海道から東北、関東にかけての広い範囲で観測しました。
-
-            　　　　　　　　　　気象庁の観測によりますと、震源地は北海道十勝地方南部で、震源の深さは83キロ、地震の規模を示すマグニチュードは6.2と推定されています。
-
-            　　　　　　　　　　気象庁地震津波監視課の海老田綾貴課長は、地震後の記者会見で「揺れの強かった地域では、落石や崖崩れなどの危険性が高まっているため、今後の地震活動や雨の状況に十分注意してほしい。今後、1週間程度は最大震度5強程度の地震に注意が必要だ」と呼びかけました。
-
-            　　　　　　　　　　一方、今月20日の三陸沖の大地震を受けて、千島海溝・日本海溝沿いでは巨大地震が発生する可能性がふだんより高まっているとして「北海道・三陸沖後発地震注意情報」が発表されています。
-
-            　　　　　　　　　　27日朝の十勝地方南部の地震について、気象庁はこの情報で注意を呼びかけている対象の地震ではなく、新たに後発地震注意情報を発表する基準には該当しないとしています。
-        </div>
+    <div id="news-header">
+        <div id="marquee-content"></div>
     </div>
 
     <div class="clock-container">
@@ -91,6 +75,65 @@
     <button id="startBtn">ACCESS (SOUND ON)</button>
 
     <script>
+        // --- 設定エリア ---
+        const rawText = `【地震情報】北海道十勝南部で震度5強 津波なし
+            　　　　　　　　　　27日午前5時23分ごろ、北海道の十勝地方南部で震度5強の強い揺れを観測する地震がありました。この地震による津波はありませんでした。
+            　　　　　　　　　　震度5強の揺れを観測したのは北海道の浦幌町で、震度5弱の揺れを北海道の新冠町で観測しました。
+            　　　　　　　　　　震度4の揺れは、いずれも北海道の札幌市清田区、函館市、釧路市、帯広市、三笠市、千歳市などで観測したほか青森県の階上町でも観測しています。
+            　　　　　　　　　　このほか震度3の揺れを、札幌市の北区や東区、白石区、豊平区、北海道の室蘭市、北見市、岩見沢市、苫小牧市などで観測したほか、青森県では八戸市、三沢市、むつ市など、岩手県の盛岡市や久慈市、二戸市などで観測しました。
+            　　　　　　　　　　このほか震度2や1の揺れを北海道から東北、関東にかけての広い範囲で観測しました。
+            　　　　　　　　　　気象庁の観測によりますと、震源地は北海道十勝地方南部で、震源の深さは83キロ、地震の規模を示すマグニチュードは6.2と推定されています。
+            　　　　　　　　　　気象庁地震津波監視課の海老田綾貴課長は、地震後の記者会見で「揺れの強かった地域では、落石や崖崩れなどの危険性が高まっているため、今後の地震活動や雨の状況に十分注意してほしい。今後、1週間程度は最大震度5強程度の地震に注意が必要だ」と呼びかけました。
+            　　　　　　　　　　一方、今月20日の三陸沖の大地震を受けて、千島海溝・日本海溝沿いでは巨大地震が発生する可能性がふだんより高まっているとして「北海道・三陸沖後発地震注意情報」が発表されています。
+            　　　　　　　　　　27日朝の十勝地方南部の地震について、気象庁はこの情報で注意を呼びかけている対象の地震ではなく、新たに後発地震注意情報を発表する基準には該当しないとしています。`; 
+        
+        const scrollSpeed = 2.5; // 1フレームあたりの移動ピクセル数
+        const waitTime = 2000; // 行頭での停止時間(ms)
+
+        // --- スクロールロジック ---
+        const header = document.getElementById('news-header');
+        const content = document.getElementById('marquee-content');
+        const lines = rawText.split('\n').filter(line => line.trim() !== "");
+        
+        let currentLineIdx = 0;
+        let posX = 0;
+        let isWaiting = false;
+
+        function updateMarquee() {
+            if (lines.length === 0) return;
+            header.classList.add('border-active');
+
+            if (!isWaiting) {
+                posX -= scrollSpeed;
+                content.style.transform = `translateX(${posX}px)`;
+
+                // 画面から完全に消えたら次の行へ
+                if (posX < -(content.offsetWidth + header.offsetWidth)) {
+                    currentLineIdx = (currentLineIdx + 1) % lines.length;
+                    startNewCycle();
+                }
+            }
+            requestAnimationFrame(updateMarquee);
+        }
+
+        function startNewCycle() {
+            content.textContent = lines[currentLineIdx];
+            posX = header.offsetWidth; // コンテナの右端からスタート
+            content.style.transform = `translateX(${posX}px)`;
+            
+            // 行頭（コンテナの右端に現れた瞬間）で止める
+            isWaiting = true;
+            setTimeout(() => {
+                isWaiting = false;
+            }, waitTime);
+        }
+
+        // 初期化
+        if (lines.length > 0) startNewCycle();
+        requestAnimationFrame(updateMarquee);
+
+
+        // --- オーディオ・時計ロジック (変更なし) ---
         let audioCtx = null;
         let masterLimiter = null;
         const timeDisplay = document.getElementById('time');
