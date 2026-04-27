@@ -15,27 +15,27 @@
 <input type="file" id="file" accept=".tja,.zip"><br>
 <textarea id="input" placeholder="ここにTJAの内容が表示されます"></textarea>
 
-<h3>密度</h3>
-倍率 <input type="number" id="rate" value="10" min="1">
+<div class="settings">
+    <h3>密度</h3>
+    倍率 <input type="number" id="rate" value="10" min="1">
 
-<h3>HS変換（0で無効）</h3>
-Easy <input type="number" id="easy" step="0.1" value="0">
-Normal <input type="number" id="normal" step="0.1" value="0">
-Hard <input type="number" id="hard" step="0.1" value="0">
-Oni <input type="number" id="oni" step="0.1" value="0">
-Edit <input type="number" id="edit" step="0.1" value="0">
+    <h3>HS変換（0で無効）</h3>
+    Easy <input type="number" id="easy" step="0.1" value="0">
+    Normal <input type="number" id="normal" step="0.1" value="0">
+    Hard <input type="number" id="hard" step="0.1" value="0">
+    Oni <input type="number" id="oni" step="0.1" value="0">
+    Edit <input type="number" id="edit" step="0.1" value="0">
 
-<h3>ノーツ変換</h3>
-<select id="mode">
-    <option value="none">そのまま</option>
-    <option value="1">全てドン</option>
-    <option value="2">全てカッ</option>
-    <option value="3">全て大ドン</option>
-    <option value="4">全て大カッ</option>
-    <option value="9">全てくすだま</option>
-</select>
-
-<label><input type="checkbox" id="keepRoll" checked>連打も倍増させる</label>
+    <h3>ノーツ変換（連打・風船系のみに適用）</h3>
+    <select id="mode">
+        <option value="none">そのまま</option>
+        <option value="5">全て連打(小)</option>
+        <option value="6">全て連打(大)</option>
+        <option value="7">全てふうせん</option>
+        <option value="9">全てくすだま</option>
+    </select>
+    <label><input type="checkbox" id="keepRoll" checked>連打の長さを倍増させる</label>
+</div>
 
 <br>
 <button onclick="convert()">変換</button>
@@ -47,30 +47,21 @@ Edit <input type="number" id="edit" step="0.1" value="0">
 <script>
 let originalZip = null;
 let originalName = "";
-let detectedEncoding = "utf-8";
+let detectedEncoding = "UTF8";
 
-// 文字コード判別（Shift_JISかUTF-8か）
-function decodeAuto(data) {
-    const sjis = new TextDecoder("shift_jis").decode(data);
-    // TJA特有のキーワードが含まれているかで判定
-    if (sjis.includes("TITLE") || sjis.includes("COURSE") || sjis.includes("#START")) {
-        detectedEncoding = "shift_jis";
-        return sjis;
-    }
-    detectedEncoding = "utf-8";
-    return new TextDecoder("utf-8").decode(data);
+function autoDecode(uint8Array) {
+    const method = Encoding.detect(uint8Array);
+    detectedEncoding = method; 
+    const unicodeArray = Encoding.convert(uint8Array, { to: 'UNICODE', from: method });
+    return Encoding.codeToString(unicodeArray);
 }
 
-function encodeByDetected(str) {
-    if (detectedEncoding === "shift_jis") {
-        const u = Encoding.stringToCode(str);
-        const s = Encoding.convert(u, "SJIS", "UNICODE");
-        return new Uint8Array(s);
-    }
-    return new TextEncoder().encode(str);
+function encodeToOriginal(str) {
+    const unicodeArray = Encoding.stringToCode(str);
+    const result = Encoding.convert(unicodeArray, { to: detectedEncoding, from: 'UNICODE' });
+    return new Uint8Array(result);
 }
 
-// ファイル読み込み処理
 document.getElementById("file").addEventListener("change", async e => {
     const f = e.target.files[0];
     if (!f) return;
@@ -79,36 +70,61 @@ document.getElementById("file").addEventListener("change", async e => {
     if (f.name.endsWith(".zip")) {
         try {
             originalZip = await JSZip.loadAsync(f);
-            let tjaFound = false;
-            // ZIP内をループして最初のTJAを探す
-            for (const path of Object.keys(originalZip.files)) {
+            for (const path in originalZip.files) {
                 if (path.toLowerCase().endsWith(".tja")) {
                     const data = await originalZip.files[path].async("uint8array");
-                    document.getElementById("input").value = decodeAuto(data);
-                    tjaFound = true;
+                    document.getElementById("input").value = autoDecode(data);
                     break;
                 }
             }
-            if (!tjaFound) alert("ZIP内に.tjaファイルが見つかりません。");
         } catch (err) {
-            console.error(err);
             alert("ZIPの読み込みに失敗しました。");
         }
     } else {
         originalZip = null;
-        const buffer = await f.arrayBuffer();
-        document.getElementById("input").value = decodeAuto(new Uint8Array(buffer));
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const data = new Uint8Array(event.target.result);
+            document.getElementById("input").value = autoDecode(data);
+        };
+        reader.readAsArrayBuffer(f);
     }
 });
 
+/**
+ * ノーツ変換コアロジック
+ */
 function transform(line, rate, mode, keepRoll) {
     return line.split(',').map(part => {
-        return part.replace(/[0-9]/g, c => {
-            if (c === "0") return "0".repeat(rate);
-            if ("5678".includes(c) && !keepRoll) return c;
-            let n = (mode !== "none") ? mode : c;
-            return n.repeat(rate);
-        });
+        let newPart = "";
+        for (let i = 0; i < part.length; i++) {
+            let c = part[i];
+
+            if (c === "0") {
+                newPart += "0".repeat(rate);
+            } else if ("1234".includes(c)) {
+                // 通常ノーツは種類を変えず、密度だけ変える
+                newPart += c + "0".repeat(rate - 1);
+            } else if ("5679".includes(c)) {
+                // 連打開始ノーツ：モードが指定されていれば上書き
+                let targetNode = (mode !== "none") ? mode : c;
+                if (keepRoll) {
+                    newPart += targetNode.repeat(rate);
+                } else {
+                    newPart += targetNode + "0".repeat(rate - 1);
+                }
+            } else if (c === "8") {
+                // 連打終了ノーツ：種類は変えず、位置合わせ
+                if (keepRoll) {
+                    newPart += "8".repeat(rate);
+                } else {
+                    newPart += "8" + "0".repeat(rate - 1);
+                }
+            } else {
+                newPart += c;
+            }
+        }
+        return newPart;
     }).join(',');
 }
 
@@ -134,20 +150,27 @@ function processTJA(text) {
     for (let line of lines) {
         let trimmed = line.trim();
 
-        if (trimmed.startsWith("TITLE:")) {
-            newLines.push(trimmed + " (" + rate + "倍)");
-            continue;
+        if (trimmed.startsWith("BALLOON:")) {
+            const parts = trimmed.split(":");
+            if (parts[1]) {
+                const counts = parts[1].split(",").map(v => {
+                    let num = parseInt(v.trim());
+                    return isNaN(num) ? v : Math.floor(num * rate);
+                });
+                newLines.push("BALLOON:" + counts.join(","));
+                continue;
+            }
         }
+
+        if (trimmed.startsWith("TITLE:")) { newLines.push(trimmed + " (" + rate + "倍)"); continue; }
         if (trimmed.startsWith("COURSE:")) {
             const c = trimmed.split(":")[1].trim().toLowerCase();
             const map = {"0":"easy", "1":"normal", "2":"hard", "3":"oni", "4":"edit"};
             curCourse = map[c] || c;
             measure = 0;
-            newLines.push(line);
-            continue;
         }
-        if (trimmed.startsWith("#START")) { inScore = true; measure = 0; newLines.push(line); continue; }
-        if (trimmed.startsWith("#END")) { inScore = false; newLines.push(line); continue; }
+        if (trimmed.startsWith("#START")) { inScore = true; measure = 0; }
+        if (trimmed.startsWith("#END")) { inScore = false; }
 
         if (inScore && trimmed && !trimmed.startsWith("#")) {
             measure++;
@@ -164,7 +187,7 @@ function processTJA(text) {
 
 function convert() {
     const val = document.getElementById("input").value;
-    if (!val) return alert("データがありません");
+    if (!val) return alert("入力が空です");
     document.getElementById("output").value = processTJA(val);
 }
 
@@ -175,28 +198,25 @@ async function download() {
 
     if (originalZip) {
         const newZip = new JSZip();
-        // 既存ファイルをすべてコピー、TJAだけ差し替え
-        const filePaths = Object.keys(originalZip.files);
-        for (const path of filePaths) {
+        for (const path in originalZip.files) {
             const entry = originalZip.files[path];
             if (entry.dir) continue;
-
             if (path.toLowerCase().endsWith(".tja")) {
-                newZip.file(path, encodeByDetected(out));
+                newZip.file(path, encodeToOriginal(out));
             } else {
                 const data = await entry.async("uint8array");
                 newZip.file(path, data);
             }
         }
         const blob = await newZip.generateAsync({type: "blob"});
-        triggerDownload(blob, originalName.replace(".zip", ` (${rate}倍).zip`));
+        saveFile(blob, originalName.replace(".zip", ` (${rate}倍).zip`));
     } else {
-        const blob = new Blob([encodeByDetected(out)]);
-        triggerDownload(blob, originalName.replace(".tja", ` (${rate}倍).tja`));
+        const blob = new Blob([encodeToOriginal(out)]);
+        saveFile(blob, originalName.replace(".tja", ` (${rate}倍).tja`));
     }
 }
 
-function triggerDownload(blob, filename) {
+function saveFile(blob, filename) {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = filename;
