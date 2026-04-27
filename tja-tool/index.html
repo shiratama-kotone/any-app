@@ -19,14 +19,14 @@
     <h3>密度</h3>
     倍率 <input type="number" id="rate" value="10" min="1">
 
-    <h3>HS変換（0で無効）</h3>
+    <h3>HS変換（0で無効 / 密度と重複OK）</h3>
     Easy <input type="number" id="easy" step="0.1" value="0">
     Normal <input type="number" id="normal" step="0.1" value="0">
     Hard <input type="number" id="hard" step="0.1" value="0">
     Oni <input type="number" id="oni" step="0.1" value="0">
     Edit <input type="number" id="edit" step="0.1" value="0">
 
-    <h3>ノーツ変換（連打・風船系のみに適用）</h3>
+    <h3>連打系変換（5,6,7,9のみに適用）</h3>
     <select id="mode">
         <option value="none">そのまま</option>
         <option value="5">全て連打(小)</option>
@@ -34,7 +34,7 @@
         <option value="7">全てふうせん</option>
         <option value="9">全てくすだま</option>
     </select>
-    <label><input type="checkbox" id="keepRoll" checked>連打の長さを倍増させる</label>
+    <label><input type="checkbox" id="keepRoll" checked>連打も倍増させる</label>
 </div>
 
 <br>
@@ -78,48 +78,32 @@ document.getElementById("file").addEventListener("change", async e => {
                 }
             }
         } catch (err) {
-            alert("ZIPの読み込みに失敗しました。");
+            alert("ZIP読み込み失敗");
         }
     } else {
         originalZip = null;
         const reader = new FileReader();
-        reader.onload = (event) => {
-            const data = new Uint8Array(event.target.result);
-            document.getElementById("input").value = autoDecode(data);
+        reader.onload = (ev) => {
+            document.getElementById("input").value = autoDecode(new Uint8Array(ev.target.result));
         };
         reader.readAsArrayBuffer(f);
     }
 });
 
-/**
- * ノーツ変換コアロジック
- */
-function transform(line, rate, mode, keepRoll) {
+function transformLine(line, rate, mode, keepRoll) {
     return line.split(',').map(part => {
         let newPart = "";
         for (let i = 0; i < part.length; i++) {
             let c = part[i];
-
             if (c === "0") {
                 newPart += "0".repeat(rate);
             } else if ("1234".includes(c)) {
-                // 通常ノーツは種類を変えず、密度だけ変える
                 newPart += c + "0".repeat(rate - 1);
             } else if ("5679".includes(c)) {
-                // 連打開始ノーツ：モードが指定されていれば上書き
-                let targetNode = (mode !== "none") ? mode : c;
-                if (keepRoll) {
-                    newPart += targetNode.repeat(rate);
-                } else {
-                    newPart += targetNode + "0".repeat(rate - 1);
-                }
+                let target = (mode !== "none") ? mode : c;
+                newPart += keepRoll ? target.repeat(rate) : (target + "0".repeat(rate - 1));
             } else if (c === "8") {
-                // 連打終了ノーツ：種類は変えず、位置合わせ
-                if (keepRoll) {
-                    newPart += "8".repeat(rate);
-                } else {
-                    newPart += "8" + "0".repeat(rate - 1);
-                }
+                newPart += keepRoll ? "8".repeat(rate) : ("8" + "0".repeat(rate - 1));
             } else {
                 newPart += c;
             }
@@ -151,33 +135,43 @@ function processTJA(text) {
         let trimmed = line.trim();
 
         if (trimmed.startsWith("BALLOON:")) {
-            const parts = trimmed.split(":");
-            if (parts[1]) {
-                const counts = parts[1].split(",").map(v => {
-                    let num = parseInt(v.trim());
-                    return isNaN(num) ? v : Math.floor(num * rate);
+            const bParts = trimmed.split(":");
+            if (bParts[1]) {
+                const counts = bParts[1].split(",").map(v => {
+                    let n = parseInt(v.trim());
+                    return isNaN(n) ? v : Math.floor(n * rate);
                 });
                 newLines.push("BALLOON:" + counts.join(","));
                 continue;
             }
         }
 
-        if (trimmed.startsWith("TITLE:")) { newLines.push(trimmed + " (" + rate + "倍)"); continue; }
-        if (trimmed.startsWith("COURSE:")) {
-            const c = trimmed.split(":")[1].trim().toLowerCase();
-            const map = {"0":"easy", "1":"normal", "2":"hard", "3":"oni", "4":"edit"};
-            curCourse = map[c] || c;
-            measure = 0;
+        if (trimmed.startsWith("TITLE:")) {
+            newLines.push(trimmed + " (" + rate + "倍)");
+            continue;
         }
-        if (trimmed.startsWith("#START")) { inScore = true; measure = 0; }
-        if (trimmed.startsWith("#END")) { inScore = false; }
+
+        if (trimmed.startsWith("COURSE:")) {
+            const cName = trimmed.split(":")[1].trim().toLowerCase();
+            const map = {"0":"easy", "1":"normal", "2":"hard", "3":"oni", "4":"edit"};
+            curCourse = map[cName] || cName;
+            measure = 0;
+            newLines.push(line);
+            continue;
+        }
+
+        if (trimmed.startsWith("#START")) { inScore = true; measure = 0; newLines.push(line); continue; }
+        if (trimmed.startsWith("#END")) { inScore = false; newLines.push(line); continue; }
 
         if (inScore && trimmed && !trimmed.startsWith("#")) {
             measure++;
+            // HS加速がある場合は、ノーツ変換の直前に #SCROLL を挿入
             if (diffSettings[curCourse] && diffSettings[curCourse] !== 0) {
-                newLines.push("#SCROLL " + (1 + (diffSettings[curCourse] * measure)).toFixed(2));
+                const hsVal = (1 + (diffSettings[curCourse] * measure)).toFixed(2);
+                newLines.push("#SCROLL " + hsVal);
             }
-            newLines.push(transform(line, rate, mode, keepRoll));
+            // 密度変換（◯倍）を適用
+            newLines.push(transformLine(line, rate, mode, keepRoll));
         } else {
             newLines.push(line);
         }
@@ -186,14 +180,14 @@ function processTJA(text) {
 }
 
 function convert() {
-    const val = document.getElementById("input").value;
-    if (!val) return alert("入力が空です");
-    document.getElementById("output").value = processTJA(val);
+    const src = document.getElementById("input").value;
+    if (!src) return alert("入力なし");
+    document.getElementById("output").value = processTJA(src);
 }
 
 async function download() {
-    const out = document.getElementById("output").value;
-    if (!out) return alert("変換を先にしてください");
+    const res = document.getElementById("output").value;
+    if (!res) return alert("変換なし");
     const rate = document.getElementById("rate").value;
 
     if (originalZip) {
@@ -202,24 +196,22 @@ async function download() {
             const entry = originalZip.files[path];
             if (entry.dir) continue;
             if (path.toLowerCase().endsWith(".tja")) {
-                newZip.file(path, encodeToOriginal(out));
+                newZip.file(path, encodeToOriginal(res));
             } else {
-                const data = await entry.async("uint8array");
-                newZip.file(path, data);
+                newZip.file(path, await entry.async("uint8array"));
             }
         }
         const blob = await newZip.generateAsync({type: "blob"});
-        saveFile(blob, originalName.replace(".zip", ` (${rate}倍).zip`));
+        save(blob, originalName.replace(".zip", ` (${rate}倍).zip`));
     } else {
-        const blob = new Blob([encodeToOriginal(out)]);
-        saveFile(blob, originalName.replace(".tja", ` (${rate}倍).tja`));
+        save(new Blob([encodeToOriginal(res)]), originalName.replace(".tja", ` (${rate}倍).tja`));
     }
 }
 
-function saveFile(blob, filename) {
+function save(blob, name) {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = filename;
+    a.download = name;
     a.click();
 }
 </script>
