@@ -3,52 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TJA改造ツール</title>
-    <link rel="stylesheet" href="style.css">
+    <title>TJA改造ツール (TITLEJA対応版)</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; line-height: 1.5; background: #f4f4f9; }
+        h2 { color: #d32f2f; }
+        textarea { width: 100%; height: 200px; margin: 10px 0; font-family: monospace; }
+        .settings { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .section { margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        input[type="number"] { width: 60px; }
+        button { padding: 10px 20px; cursor: pointer; background: #d32f2f; color: white; border: none; border-radius: 4px; font-weight: bold; }
+        button:hover { background: #b71c1c; }
+        .download-btn { background: #1976d2; margin-top: 10px; }
+        .download-btn:hover { background: #1565c0; }
+    </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
 </head>
 <body>
 
-<h2>🔥 TJA改造ツール (TITLEJA対応版)</h2>
-
-<input type="file" id="file" accept=".tja,.zip"><br>
-<textarea id="input" placeholder="ここにTJAの内容が表示されます"></textarea>
+<h2>🔥 TJA改造ツール</h2>
 
 <div class="settings">
-    <h3>密度</h3>
-    倍率 <input type="number" id="rate" value="10" min="1">
+    <div class="section">
+        <strong>ファイル選択:</strong> 
+        <input type="file" id="file" accept=".tja,.zip">
+    </div>
 
-    <h3>HS変換（0で無効 / 密度と重複OK）</h3>
-    Easy <input type="number" id="easy" step="0.1" value="0">
-    Normal <input type="number" id="normal" step="0.1" value="0">
-    Hard <input type="number" id="hard" step="0.1" value="0">
-    Oni <input type="number" id="oni" step="0.1" value="0">
-    Edit <input type="number" id="edit" step="0.1" value="0">
+    <div class="section">
+        <h3>密度・タイトル設定</h3>
+        倍率: <input type="number" id="rate" value="10" min="1"> 
+        <small>(2倍以上の時のみタイトルに反映されます)</small>
+    </div>
 
-    <h3>連打系変換（5,6,7,9のみに適用）</h3>
-    <select id="mode">
-        <option value="none">そのまま</option>
-        <option value="5">全て連打(小)</option>
-        <option value="6">全て連打(大)</option>
-        <option value="7">全てふうせん</option>
-        <option value="9">全てくすだま</option>
-    </select>
-    <label><input type="checkbox" id="keepRoll" checked>連打も倍増させる</label>
+    <div class="section">
+        <h3>HS変換（0で無効 / 密度と重複OK）</h3>
+        Easy: <input type="number" id="easy" step="0.1" value="0">
+        Normal: <input type="number" id="normal" step="0.1" value="0">
+        Hard: <input type="number" id="hard" step="0.1" value="0">
+        Oni: <input type="number" id="oni" step="0.1" value="0">
+        Edit: <input type="number" id="edit" step="0.1" value="0">
+    </div>
+
+    <div class="section">
+        <h3>連打系変換（5,6,7,9のみに適用）</h3>
+        <select id="mode">
+            <option value="none">そのまま</option>
+            <option value="5">全て連打(小)</option>
+            <option value="6">全て連打(大)</option>
+            <option value="7">全てふうせん</option>
+            <option value="9">全てくすだま</option>
+        </select>
+        <label><input type="checkbox" id="keepRoll" checked>連打も倍増させる</label>
+    </div>
 </div>
 
-<br>
-<button onclick="convert()">変換</button>
+<textarea id="input" placeholder="TJAの内容がここに読み込まれます"></textarea>
+<button onclick="convert()">変換実行</button>
 
-<h3>結果</h3>
+<hr>
+
+<h3>結果プレビュー</h3>
 <textarea id="output" readonly></textarea>
-<button onclick="download()">ダウンロード</button>
+<button class="download-btn" onclick="download()">ダウンロード (.tja / .zip)</button>
 
 <script>
 let originalZip = null;
 let originalName = "";
 let detectedEncoding = "UTF8";
 
+// エンコードの自動判別とデコード
 function autoDecode(uint8Array) {
     const method = Encoding.detect(uint8Array);
     detectedEncoding = method; 
@@ -56,12 +79,14 @@ function autoDecode(uint8Array) {
     return Encoding.codeToString(unicodeArray);
 }
 
+// 元のエンコードに戻してUint8Array化
 function encodeToOriginal(str) {
     const unicodeArray = Encoding.stringToCode(str);
     const result = Encoding.convert(unicodeArray, { to: detectedEncoding, from: 'UNICODE' });
     return new Uint8Array(result);
 }
 
+// ファイル読み込み
 document.getElementById("file").addEventListener("change", async e => {
     const f = e.target.files[0];
     if (!f) return;
@@ -78,7 +103,7 @@ document.getElementById("file").addEventListener("change", async e => {
                 }
             }
         } catch (err) {
-            alert("ZIP読み込み失敗");
+            alert("ZIPの読み込みに失敗しました。");
         }
     } else {
         originalZip = null;
@@ -90,6 +115,7 @@ document.getElementById("file").addEventListener("change", async e => {
     }
 });
 
+// ノーツ変換コアロジック
 function transformLine(line, rate, mode, keepRoll) {
     return line.split(',').map(part => {
         let newPart = "";
@@ -112,9 +138,11 @@ function transformLine(line, rate, mode, keepRoll) {
     }).join(',');
 }
 
+// TJA全体処理
 function processTJA(text) {
     const lines = text.split(/\r?\n/);
-    const rate = parseInt(document.getElementById("rate").value) || 1;
+    const rateVal = parseInt(document.getElementById("rate").value);
+    const rate = isNaN(rateVal) ? 1 : rateVal;
     const mode = document.getElementById("mode").value;
     const keepRoll = document.getElementById("keepRoll").checked;
 
@@ -133,7 +161,7 @@ function processTJA(text) {
     let inScore = false;
     const newLines = [];
 
-    // 1週目: TITLE/TITLEJA/SUBTITLE/SUBTITLEJA のスキャンと基本タグの処理
+    // 1. TITLEJA / SUBTITLEJA の抽出と既存タグの除去
     const filteredLines = [];
     for (let line of lines) {
         let trimmed = line.trim();
@@ -156,16 +184,21 @@ function processTJA(text) {
         filteredLines.push(line);
     }
 
-    // 新しいヘッダーを挿入
-    newLines.push(`TITLE:${title} (${rate}倍)`);
+    // 2. 新しいヘッダーの構築
+    let displayTitle = title;
+    if (rate > 1) {
+        displayTitle += ` (${rate}倍)`;
+    }
+    newLines.push(`TITLE:${displayTitle}`);
     if (subtitle) {
         newLines.push(`SUBTITLE:${subtitle}`);
     }
 
-    // 2週目: 本編処理
+    // 3. 各コースの変換
     for (let line of filteredLines) {
         let trimmed = line.trim();
 
+        // 風船打数
         if (trimmed.startsWith("BALLOON:")) {
             const bParts = trimmed.split(":");
             if (bParts[1]) {
@@ -206,13 +239,13 @@ function processTJA(text) {
 
 function convert() {
     const src = document.getElementById("input").value;
-    if (!src) return alert("入力なし");
+    if (!src) return alert("TJAの内容がありません。");
     document.getElementById("output").value = processTJA(src);
 }
 
 async function download() {
     const res = document.getElementById("output").value;
-    if (!res) return alert("変換なし");
+    if (!res) return alert("変換を先に実行してください。");
     const rate = document.getElementById("rate").value;
 
     if (originalZip) {
