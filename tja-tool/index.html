@@ -8,6 +8,7 @@
         body { font-family: sans-serif; margin: 20px; background: #f4f4f9; }
         textarea { width: 100%; height: 200px; margin: 10px 0; font-family: monospace; }
         .settings { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .section { margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
         input[type="number"] { width: 80px; }
         button { padding: 10px 20px; cursor: pointer; background: #d32f2f; color: white; border: none; border-radius: 4px; font-weight: bold; }
         .download-btn { background: #1976d2; margin-top: 10px; }
@@ -20,24 +21,35 @@
 <h2>🔥 TJA改造ツール</h2>
 
 <div class="settings">
-    <input type="file" id="file" accept=".tja,.zip"><br><br>
-    繰り返し倍数: <input type="number" id="rate" value="10" min="1">
+    <div class="section">
+        <strong>ファイル:</strong> <input type="file" id="file" accept=".tja,.zip">
+    </div>
+    <div class="section">
+        繰り返し倍数: <input type="number" id="rate" value="10" min="1">
+    </div>
+    <div class="section">
+        <label><input type="checkbox" id="keepScore" checked> 点数そのまま (OFFで点数固定＆連打削除)</label>
+    </div>
     
-    <h3>HS変換 (0で無効)</h3>
-    Easy: <input type="number" id="easy" step="0.1" value="0">
-    Normal: <input type="number" id="normal" step="0.1" value="0">
-    Hard: <input type="number" id="hard" step="0.1" value="0">
-    Oni: <input type="number" id="oni" step="0.1" value="0">
-    Edit: <input type="number" id="edit" step="0.1" value="0">
+    <div class="section">
+        <h3>HS変換 (0で無効)</h3>
+        Easy: <input type="number" id="easy" step="0.1" value="0">
+        Normal: <input type="number" id="normal" step="0.1" value="0">
+        Hard: <input type="number" id="hard" step="0.1" value="0">
+        Oni: <input type="number" id="oni" step="0.1" value="0">
+        Edit: <input type="number" id="edit" step="0.1" value="0">
+    </div>
 
-    <h3>連打変換</h3>
-    <select id="mode">
-        <option value="none">そのまま</option>
-        <option value="5">連打(小)</option>
-        <option value="6">連打(大)</option>
-        <option value="7">ふうせん</option>
-        <option value="9">くすだま</option>
-    </select>
+    <div class="section">
+        <h3>連打変換 (点数固定OFF時は削除されます)</h3>
+        <select id="mode">
+            <option value="none">そのまま</option>
+            <option value="5">連打(小)</option>
+            <option value="6">連打(大)</option>
+            <option value="7">ふうせん</option>
+            <option value="9">くすだま</option>
+        </select>
+    </div>
 </div>
 
 <textarea id="input" placeholder="TJAを読み込んでください"></textarea>
@@ -82,12 +94,16 @@ document.getElementById("file").addEventListener("change", async e => {
     }
 });
 
-function repeatChars(str, rate, mode) {
-    if (rate <= 1) return str;
+// 文字繰り返し＆連打削除処理
+function transformChars(str, rate, mode, removeRoll) {
     let res = "";
     for (let i = 0; i < str.length; i++) {
         let c = str[i];
         if ("0123456789".includes(c)) {
+            if (removeRoll && "56789".includes(c)) {
+                res += "0".repeat(rate); // 連打削除時は0で埋める
+                continue;
+            }
             let target = (mode !== "none" && "5679".includes(c)) ? mode : c;
             res += target.repeat(rate);
         } else {
@@ -97,25 +113,13 @@ function repeatChars(str, rate, mode) {
     return res;
 }
 
-function countNotes(text) {
-    let count = 0;
-    let inScore = false;
-    text.split('\n').forEach(line => {
-        let t = line.trim();
-        if (t.startsWith("#START")) inScore = true;
-        else if (t.startsWith("#END")) inScore = false;
-        else if (inScore && !t.startsWith("#")) {
-            count += (t.match(/[1-4]/g) || []).length;
-        }
-    });
-    return count;
-}
-
 function processTJA(text) {
     const lines = text.split(/\r?\n/);
     const rate = Math.max(1, parseInt(document.getElementById("rate").value) || 1);
     const mode = document.getElementById("mode").value;
-    const diffSettings = { easy:0, normal:0, hard:0, oni:0, edit:0 };
+    const keepScore = document.getElementById("keepScore").checked;
+    
+    const diffSettings = {};
     ["easy","normal","hard","oni","edit"].forEach(d => {
         diffSettings[d] = parseFloat(document.getElementById(d).value) || 0;
     });
@@ -124,7 +128,6 @@ function processTJA(text) {
     let courses = [];
     const headerLines = [];
 
-    // TITLEJA等の整理
     for (let line of lines) {
         let t = line.trim();
         if (t.startsWith("TITLE:")) { if(!title) title = t.split(":")[1].trim(); continue; }
@@ -137,8 +140,7 @@ function processTJA(text) {
             currentCourseData = { name: t.split(":")[1].trim().toLowerCase(), content: [] };
         }
         if (currentCourseData) {
-            // 倍率変更時のみスコアタグを除去して再計算対象にする
-            if (rate > 1 && (t.startsWith("SCOREINIT:") || t.startsWith("SCOREDIFF:"))) continue;
+            if (!keepScore && (t.startsWith("SCOREINIT:") || t.startsWith("SCOREDIFF:"))) continue;
             currentCourseData.content.push(line);
         } else {
             headerLines.push(line);
@@ -146,7 +148,6 @@ function processTJA(text) {
     }
     if (currentCourseData) courses.push(currentCourseData);
 
-    // タイトル構築
     let finalTJA = `TITLE:${title}${rate > 1 ? ` (${rate}倍)` : ""}\n`;
     if (subtitle) finalTJA += `SUBTITLE:${subtitle}\n`;
     finalTJA += headerLines.join("\n") + "\n";
@@ -159,7 +160,8 @@ function processTJA(text) {
 
         let processedLines = course.content.map(line => {
             let t = line.trim();
-            if (t.startsWith("BALLOON:") && rate > 1) {
+            if (t.startsWith("BALLOON:") && !keepScore) return ""; // 点数固定時は風船設定削除
+            if (t.startsWith("BALLOON:") && keepScore && rate > 1) {
                 const bVal = t.split(":")[1];
                 return bVal ? "BALLOON:" + bVal.split(",").map(v => Math.floor((parseInt(v.trim()) || 0) * rate)).join(",") : line;
             }
@@ -175,7 +177,7 @@ function processTJA(text) {
                             out += `#SCROLL ${(1 + (diffSettings[diffKey] * measure)).toFixed(2)}\n`;
                         }
                     }
-                    out += repeatChars(part, rate, mode);
+                    out += transformChars(part, rate, mode, !keepScore);
                     return out;
                 }).join(",");
             }
@@ -184,11 +186,15 @@ function processTJA(text) {
 
         finalTJA += `COURSE:${course.name}\n`;
         
-        // 倍率が1より大きい時のみ点数を固定
-        if (rate > 1) {
-            let totalCombo = countNotes(processedLines);
+        if (!keepScore) {
+            // 点数計算 (大音符は2倍としてカウント)
+            let smallNotes = (processedLines.match(/[1-2]/g) || []).length;
+            let largeNotes = (processedLines.match(/[3-4]/g) || []).length;
+            let totalWeight = smallNotes + (largeNotes * 2);
+            
             let targetScore = (diffKey === "easy" || diffKey === "normal") ? 114514 : 114514810;
-            let scoreInit = totalCombo > 0 ? Math.floor(targetScore / totalCombo) : 100;
+            let scoreInit = totalWeight > 0 ? Math.floor(targetScore / totalWeight) : 100;
+            
             finalTJA += `SCOREINIT:${scoreInit}\n`;
             finalTJA += `SCOREDIFF:0\n`;
         }
@@ -218,9 +224,9 @@ async function download() {
                 newZip.file(path, await originalZip.files[path].async("uint8array"));
             }
         }
-        save(await newZip.generateAsync({type: "blob"}), originalName.replace(".zip", ` (${rate}倍).zip`));
+        save(await newZip.generateAsync({type: "blob"}), originalName.replace(".zip", ` (改造).zip`));
     } else {
-        save(new Blob([encodeToOriginal(res)]), originalName.replace(".tja", ` (${rate}倍).tja`));
+        save(new Blob([encodeToOriginal(res)]), originalName.replace(".tja", ` (改造).tja`));
     }
 }
 
