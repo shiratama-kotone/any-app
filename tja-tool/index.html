@@ -10,7 +10,7 @@
 </head>
 <body>
 
-<h2>🔥 TJA改造ツール</h2>
+<h2>🔥 TJA改造ツール (TITLEJA対応版)</h2>
 
 <input type="file" id="file" accept=".tja,.zip"><br>
 <textarea id="input" placeholder="ここにTJAの内容が表示されます"></textarea>
@@ -126,12 +126,44 @@ function processTJA(text) {
         edit: parseFloat(document.getElementById("edit").value) || 0
     };
 
+    let title = "";
+    let subtitle = "";
     let curCourse = "";
     let measure = 0;
     let inScore = false;
     const newLines = [];
 
+    // 1週目: TITLE/TITLEJA/SUBTITLE/SUBTITLEJA のスキャンと基本タグの処理
+    const filteredLines = [];
     for (let line of lines) {
+        let trimmed = line.trim();
+        if (trimmed.startsWith("TITLE:")) {
+            if (!title) title = trimmed.replace("TITLE:", "").trim();
+            continue; 
+        }
+        if (trimmed.startsWith("TITLEJA:")) {
+            title = trimmed.replace("TITLEJA:", "").trim();
+            continue;
+        }
+        if (trimmed.startsWith("SUBTITLE:")) {
+            if (!subtitle) subtitle = trimmed.replace("SUBTITLE:", "").trim();
+            continue;
+        }
+        if (trimmed.startsWith("SUBTITLEJA:")) {
+            subtitle = trimmed.replace("SUBTITLEJA:", "").trim();
+            continue;
+        }
+        filteredLines.push(line);
+    }
+
+    // 新しいヘッダーを挿入
+    newLines.push(`TITLE:${title} (${rate}倍)`);
+    if (subtitle) {
+        newLines.push(`SUBTITLE:${subtitle}`);
+    }
+
+    // 2週目: 本編処理
+    for (let line of filteredLines) {
         let trimmed = line.trim();
 
         if (trimmed.startsWith("BALLOON:")) {
@@ -144,11 +176,6 @@ function processTJA(text) {
                 newLines.push("BALLOON:" + counts.join(","));
                 continue;
             }
-        }
-
-        if (trimmed.startsWith("TITLE:")) {
-            newLines.push(trimmed + " (" + rate + "倍)");
-            continue;
         }
 
         if (trimmed.startsWith("COURSE:")) {
@@ -165,12 +192,10 @@ function processTJA(text) {
 
         if (inScore && trimmed && !trimmed.startsWith("#")) {
             measure++;
-            // HS加速がある場合は、ノーツ変換の直前に #SCROLL を挿入
             if (diffSettings[curCourse] && diffSettings[curCourse] !== 0) {
                 const hsVal = (1 + (diffSettings[curCourse] * measure)).toFixed(2);
                 newLines.push("#SCROLL " + hsVal);
             }
-            // 密度変換（◯倍）を適用
             newLines.push(transformLine(line, rate, mode, keepRoll));
         } else {
             newLines.push(line);
