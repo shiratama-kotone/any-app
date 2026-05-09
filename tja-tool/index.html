@@ -8,8 +8,8 @@
         body { font-family: sans-serif; margin: 20px; background: #f4f4f9; }
         textarea { width: 100%; height: 200px; margin: 10px 0; font-family: monospace; }
         .settings { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        input[type="number"] { width: 60px; }
-        button { padding: 10px 20px; cursor: pointer; background: #d32f2f; color: white; border: none; border-radius: 4px; }
+        input[type="number"] { width: 80px; }
+        button { padding: 10px 20px; cursor: pointer; background: #d32f2f; color: white; border: none; border-radius: 4px; font-weight: bold; }
         .download-btn { background: #1976d2; margin-top: 10px; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -17,7 +17,7 @@
 </head>
 <body>
 
-<h2>🔥 TJA改造ツール (文字繰り返し方式)</h2>
+<h2>🔥 TJA改造ツール</h2>
 
 <div class="settings">
     <input type="file" id="file" accept=".tja,.zip"><br><br>
@@ -82,21 +82,33 @@ document.getElementById("file").addEventListener("change", async e => {
     }
 });
 
-// 各文字を単純にrate分繰り返す処理
 function repeatChars(str, rate, mode) {
+    if (rate <= 1) return str;
     let res = "";
     for (let i = 0; i < str.length; i++) {
         let c = str[i];
-        // 0~9の数字なら繰り返す
         if ("0123456789".includes(c)) {
             let target = (mode !== "none" && "5679".includes(c)) ? mode : c;
             res += target.repeat(rate);
         } else {
-            // カンマや空白などはそのまま
             res += c;
         }
     }
     return res;
+}
+
+function countNotes(text) {
+    let count = 0;
+    let inScore = false;
+    text.split('\n').forEach(line => {
+        let t = line.trim();
+        if (t.startsWith("#START")) inScore = true;
+        else if (t.startsWith("#END")) inScore = false;
+        else if (inScore && !t.startsWith("#")) {
+            count += (t.match(/[1-4]/g) || []).length;
+        }
+    });
+    return count;
 }
 
 function processTJA(text) {
@@ -108,9 +120,9 @@ function processTJA(text) {
         diffSettings[d] = parseFloat(document.getElementById(d).value) || 0;
     });
 
-    let title = "", subtitle = "", curCourse = "", measureCount = 0, inScore = false;
-    const resultLines = [];
-    const tempLines = [];
+    let title = "", subtitle = "", currentCourseData = null;
+    let courses = [];
+    const headerLines = [];
 
     // TITLEJA等の整理
     for (let line of lines) {
@@ -119,62 +131,72 @@ function processTJA(text) {
         if (t.startsWith("TITLEJA:")) { title = t.split(":")[1].trim(); continue; }
         if (t.startsWith("SUBTITLE:")) { if(!subtitle) subtitle = t.split(":")[1].trim(); continue; }
         if (t.startsWith("SUBTITLEJA:")) { subtitle = t.split(":")[1].trim(); continue; }
-        tempLines.push(line);
-    }
-
-    resultLines.push(`TITLE:${title}${rate > 1 ? ` (${rate}倍)` : ""}`);
-    if (subtitle) resultLines.push(`SUBTITLE:${subtitle}`);
-
-    // 本編変換
-    for (let line of tempLines) {
-        let trimmed = line.trim();
-        if (!trimmed) { resultLines.push(line); continue; }
-
-        if (trimmed.startsWith("COURSE:")) {
-            const cName = trimmed.split(":")[1].trim().toLowerCase();
-            const map = {"0":"easy", "1":"normal", "2":"hard", "3":"oni", "4":"edit"};
-            curCourse = map[cName] || cName;
-            measureCount = 0;
-            resultLines.push(line);
-            continue;
+        
+        if (t.startsWith("COURSE:")) {
+            if (currentCourseData) courses.push(currentCourseData);
+            currentCourseData = { name: t.split(":")[1].trim().toLowerCase(), content: [] };
         }
-
-        if (trimmed.startsWith("BALLOON:")) {
-            const bVal = trimmed.split(":")[1];
-            if (bVal) {
-                const counts = bVal.split(",").map(v => Math.floor((parseInt(v.trim()) || 0) * rate));
-                resultLines.push("BALLOON:" + counts.join(","));
-            } else {
-                resultLines.push(line);
-            }
-            continue;
-        }
-
-        if (trimmed.startsWith("#START")) { inScore = true; measureCount = 0; resultLines.push(line); continue; }
-        if (trimmed.startsWith("#END")) { inScore = false; resultLines.push(line); continue; }
-
-        if (inScore && !trimmed.startsWith("#")) {
-            const parts = line.split(",");
-            const transformedParts = parts.map((part, idx) => {
-                let p = part.trim();
-                if (!p && idx === parts.length - 1) return ""; 
-                
-                let out = "";
-                if (p && idx < parts.length - 1) {
-                    measureCount++;
-                    if (diffSettings[curCourse] !== 0) {
-                        out += `#SCROLL ${(1 + (diffSettings[curCourse] * measureCount)).toFixed(2)}\n`;
-                    }
-                }
-                out += repeatChars(part, rate, mode);
-                return out;
-            });
-            resultLines.push(transformedParts.join(","));
+        if (currentCourseData) {
+            // 倍率変更時のみスコアタグを除去して再計算対象にする
+            if (rate > 1 && (t.startsWith("SCOREINIT:") || t.startsWith("SCOREDIFF:"))) continue;
+            currentCourseData.content.push(line);
         } else {
-            resultLines.push(line);
+            headerLines.push(line);
         }
     }
-    return resultLines.join("\n");
+    if (currentCourseData) courses.push(currentCourseData);
+
+    // タイトル構築
+    let finalTJA = `TITLE:${title}${rate > 1 ? ` (${rate}倍)` : ""}\n`;
+    if (subtitle) finalTJA += `SUBTITLE:${subtitle}\n`;
+    finalTJA += headerLines.join("\n") + "\n";
+
+    courses.forEach(course => {
+        let measure = 0;
+        let scoreIn = false;
+        const map = {"0":"easy", "1":"normal", "2":"hard", "3":"oni", "4":"edit"};
+        let diffKey = map[course.name] || course.name;
+
+        let processedLines = course.content.map(line => {
+            let t = line.trim();
+            if (t.startsWith("BALLOON:") && rate > 1) {
+                const bVal = t.split(":")[1];
+                return bVal ? "BALLOON:" + bVal.split(",").map(v => Math.floor((parseInt(v.trim()) || 0) * rate)).join(",") : line;
+            }
+            if (t.startsWith("#START")) { scoreIn = true; measure = 0; return line; }
+            if (t.startsWith("#END")) { scoreIn = false; return line; }
+            if (scoreIn && !t.startsWith("#")) {
+                const parts = line.split(",");
+                return parts.map((part, idx) => {
+                    let out = "";
+                    if (part.trim() && idx < parts.length - 1) {
+                        measure++;
+                        if (diffSettings[diffKey] !== 0) {
+                            out += `#SCROLL ${(1 + (diffSettings[diffKey] * measure)).toFixed(2)}\n`;
+                        }
+                    }
+                    out += repeatChars(part, rate, mode);
+                    return out;
+                }).join(",");
+            }
+            return line;
+        }).join("\n");
+
+        finalTJA += `COURSE:${course.name}\n`;
+        
+        // 倍率が1より大きい時のみ点数を固定
+        if (rate > 1) {
+            let totalCombo = countNotes(processedLines);
+            let targetScore = (diffKey === "easy" || diffKey === "normal") ? 114514 : 114514810;
+            let scoreInit = totalCombo > 0 ? Math.floor(targetScore / totalCombo) : 100;
+            finalTJA += `SCOREINIT:${scoreInit}\n`;
+            finalTJA += `SCOREDIFF:0\n`;
+        }
+
+        finalTJA += processedLines + "\n";
+    });
+
+    return finalTJA;
 }
 
 function convert() {
