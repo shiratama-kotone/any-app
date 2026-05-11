@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>TJA プレビューア (Fixed Sync Edition)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #2b2b2b; color: #fff;}
+        .container { max-width: 900px; margin: 0 auto; background: #3c3f41; padding: 20px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); }
+        #drop-zone { border: 3px dashed #777; padding: 30px; text-align: center; margin-bottom: 20px; background: #2b2b2b; border-radius: 12px; cursor: pointer; transition: 0.2s; font-weight: bold; color: #aaa;}
+        #drop-zone.dragover { background: #1e3a5f; border-color: #4facfe; color: #4facfe; }
+        .controls { display: flex; align-items: center; gap: 15px; background: #1e1e1e; padding: 15px; border-radius: 8px; margin-bottom: 20px; flex-wrap: wrap;}
+        button { background: #00b0ff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.2s; }
+        button:hover { background: #0081cb; }
+        button:disabled { background: #555; cursor: not-allowed; }
+        .slider-group { display: flex; align-items: center; gap: 10px; flex-grow: 1; min-width: 200px;}
+        input[type="range"] { flex-grow: 1; cursor: pointer; }
+        .settings-group { display: flex; align-items: center; gap: 15px; background: #444; padding: 10px 15px; border-radius: 4px;}
+        select { padding: 5px 10px; font-size: 16px; font-weight: bold; border-radius: 4px; cursor: pointer; background: #222; color: #fff; border: 1px solid #666;}
+        canvas { background: #000; width: 100%; height: 250px; display: block; border-radius: 8px; box-shadow: inset 0 0 20px rgba(255,255,255,0.1); border: 2px solid #555;}
+        #log { background: #111; color: #0f0; padding: 10px; height: 100px; overflow-y: auto; font-family: monospace; font-size: 13px; border-radius: 8px; margin-top: 10px; border: 1px solid #333;}
+        .key-guide { background: #1e1e1e; padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: center; font-size: 14px; color: #ccc;}
+        .key { display: inline-block; background: #333; border: 1px solid #666; border-radius: 4px; padding: 2px 8px; font-weight: bold; margin: 0 4px; box-shadow: 0 2px 0 #000;}
+        .key-don { color: #ff5252; } .key-ka { color: #448aff; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="margin-top:0; color: #fff;">🥁 TJA プレビューア <small style="color:#aaa; font-size:16px;">(Fixed Sync)</small></h2>
+    
+    <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+        📁 ここに ZIPファイル（.tja + 音声）をドロップ
+        <input type="file" id="file-input" accept=".zip" style="display: none;">
+    </div>
+
+    <div class="key-guide">
+        【操作】 ドン: <span class="key key-don">F</span> <span class="key key-don">J</span> ｜ カッ: <span class="key key-ka">D</span> <span class="key key-ka">K</span>
+    </div>
+
+    <div class="controls">
+        <button id="play-btn" disabled>▶️ 再生</button>
+        <div class="slider-group">
+            <span id="time-display">0:00</span>
+            <input type="range" id="seek-bar" value="0" step="0.01" disabled>
+            <span id="duration-display">0:00</span>
+        </div>
+        <div class="settings-group">
+            <select id="course-select" disabled></select>
+            <label style="cursor: pointer;">
+                <input type="checkbox" id="auto-play-check" checked> オート
+            </label>
+        </div>
+    </div>
+
+    <canvas id="game-canvas" width="900" height="250"></canvas>
+    <pre id="log">ZIPファイルを読み込んでください...</pre>
+</div>
+
+<script>
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const logEl = document.getElementById('log');
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+
+    const playBtn = document.getElementById('play-btn');
+    const seekBar = document.getElementById('seek-bar');
+    const timeDisplay = document.getElementById('time-display');
+    const durationDisplay = document.getElementById('duration-display');
+    const autoPlayCheck = document.getElementById('auto-play-check');
+    const courseSelect = document.getElementById('course-select');
+
+    let parsedNotes = [];
+    let animationId = null;
+    let hitEffectTimer = 0;
+    let judgeTexts = [];
+    let combo = 0; let score = 0;
+    let totalRollHits = 0;
+    let currentRollHits = 0;
+    let lastRollEndTime = 0;
+    
+    const TARGET_X = 180;
+    const Y_CENTER = 150;
+
+    let coursesData = {};
+    let globalTjaData = { bpm: 120, offset: 0 };
+    const courseMap = { '0': 'Easy', 'easy': 'Easy', '1': 'Normal', 'normal': 'Normal', '2': 'Hard', 'hard': 'Hard', '3': 'Oni', 'oni': 'Oni', '4': 'Edit', 'edit': 'Edit' };
+
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const masterGain = audioContext.createGain();
+    masterGain.connect(audioContext.destination);
+
+    let audioBuffer = null;
+    let audioSource = null;
+    let startTime = 0;
+    let pausedAt = 0;
+    let isPlaying = false;
+
+    function getCurrentTime() {
+        if (!isPlaying) return pausedAt;
+        return audioContext.currentTime - startTime;
+    }
+
+    function playAudio() {
+        if (!audioBuffer) return;
+        if (audioContext.state === 'suspended') audioContext.resume();
+        audioSource = audioContext.createBufferSource();
+        audioSource.buffer = audioBuffer;
+        audioSource.connect(masterGain);
+        audioSource.onended = () => {
+            if (isPlaying && getCurrentTime() >= audioBuffer.duration - 0.1) {
+                isPlaying = false;
+                playBtn.textContent = '▶️ 再生';
+                pausedAt = audioBuffer.duration;
+            }
+        };
+        audioSource.start(0, pausedAt);
+        startTime = audioContext.currentTime - pausedAt;
+        isPlaying = true;
+    }
+
+    function pauseAudio() {
+        if (!isPlaying || !audioSource) return;
+        audioSource.stop();
+        pausedAt = audioContext.currentTime - startTime;
+        isPlaying = false;
+    }
+
+    function playSE(type, isBig = false) {
+        const osc = audioContext.createOscillator();
+        const g = audioContext.createGain();
+        osc.connect(g); g.connect(masterGain);
+        const now = audioContext.currentTime;
+        const vol = isBig ? 1.0 : 0.6;
+        if (type === 'don') {
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.1);
+        } else {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(400, now);
+            osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.05);
+        }
+        g.gain.setValueAtTime(vol, now);
+        g.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(); osc.stop(now + 0.1);
+    }
+
+    function log(msg) { logEl.textContent += msg + '\n'; logEl.scrollTop = logEl.scrollHeight; }
+    function formatTime(sec) {
+        const m = Math.floor(sec / 60); const s = Math.floor(Math.max(0, sec) % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+    }
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault(); dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+    });
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFile(e.target.files[0]); });
+
+    async function handleFile(file) {
+        if (!file.name.endsWith('.zip')) return alert('ZIPファイルをドロップしてください。');
+        logEl.textContent = ''; log(`📁 [${file.name}] 展開中...`);
+        resetUI();
+        try {
+            const zip = await JSZip.loadAsync(file);
+            let tjaEntry = null, audioEntry = null;
+            zip.forEach((path, entry) => {
+                if (path.toLowerCase().endsWith('.tja')) tjaEntry = entry;
+                if (path.toLowerCase().match(/\.(ogg|mp3|wav)$/)) audioEntry = entry;
+            });
+            if (!tjaEntry || !audioEntry) throw new Error('TJAまたは音声ファイルが見つかりません。');
+            const tjaUint8 = await tjaEntry.async('uint8array');
+            let tjaText = new TextDecoder().decode(tjaUint8);
+            if (tjaText.includes('')) tjaText = new TextDecoder('shift_jis').decode(tjaUint8);
+            parseTJAStructure(tjaText);
+            const arrayBuffer = await audioEntry.async('arraybuffer');
+            audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            seekBar.max = audioBuffer.duration;
+            durationDisplay.textContent = formatTime(audioBuffer.duration);
+            enableUI(); log(`🚀 準備完了！`);
+            startDrawingLoop();
+        } catch (e) { log(`❌ エラー: ${e.message}`); }
+    }
+
+    function parseTJAStructure(text) {
+        coursesData = {}; globalTjaData = { bpm: 120, offset: 0 };
+        const lines = text.split(/\r?\n/);
+        let currentCourse = 'Oni';
+        lines.forEach(line => {
+            let t = line.split('//')[0].trim();
+            if (!t) return;
+            if (t.startsWith('BPM:')) globalTjaData.bpm = parseFloat(t.split(':')[1]);
+            else if (t.startsWith('OFFSET:')) globalTjaData.offset = parseFloat(t.split(':')[1]);
+            else if (t.startsWith('COURSE:')) currentCourse = courseMap[t.split(':')[1].trim().toLowerCase()] || t.split(':')[1].trim();
+            if (!coursesData[currentCourse]) coursesData[currentCourse] = [];
+            coursesData[currentCourse].push(t);
+        });
+        courseSelect.innerHTML = '';
+        Object.keys(coursesData).forEach(c => {
+            const opt = document.createElement('option'); opt.value = c; opt.textContent = c; courseSelect.appendChild(opt);
+        });
+        courseSelect.value = Object.keys(coursesData).includes('Oni') ? 'Oni' : Object.keys(coursesData)[0];
+        loadCourseNotes(courseSelect.value);
+    }
+
+    function loadCourseNotes(label) {
+        parsedNotes = []; combo = 0; score = 0; judgeTexts = [];
+        let currentBpm = globalTjaData.bpm;
+        let currentMeasure = 4;
+        let currentTime = -globalTjaData.offset;
+        let currentScroll = 1.0;
+        let isStarted = false;
+        let measureNotes = [];
+
+        coursesData[label].forEach(line => {
+            if (line === '#START') { isStarted = true; return; }
+            if (line === '#END') { isStarted = false; return; }
+            if (!isStarted) return;
+
+            if (line.startsWith('#')) {
+                const parts = line.split(' ');
+                const cmd = parts[0];
+                const val = parts[1];
+                if (cmd === '#BPMCHANGE') currentBpm = parseFloat(val);
+                else if (cmd === '#SCROLL') currentScroll = parseFloat(val);
+                else if (cmd === '#MEASURE') {
+                    const m = val.split('/');
+                    currentMeasure = (parseFloat(m[0]) / parseFloat(m[1])) * 4;
+                }
+                else if (cmd === '#DELAY') currentTime += parseFloat(val);
+            } else if (line.includes(',')) {
+                const parts = line.split(',');
+                parts.forEach((part, idx) => {
+                    const notes = part.replace(/\s+/g, '').split('');
+                    if (notes.length > 0) {
+                        const duration = currentMeasure * (60 / currentBpm);
+                        notes.forEach((n, nIdx) => {
+                            const noteType = parseInt(n);
+                            if (noteType > 0 && noteType < 8) {
+                                parsedNotes.push({
+                                    time: currentTime + (duration * (nIdx / notes.length)),
+                                    type: noteType,
+                                    bpm: currentBpm,
+                                    scroll: currentScroll,
+                                    hit: false
+                                });
+                            }
+                        });
+                        currentTime += duration;
+                    }
+                });
+            }
+        });
+        parsedNotes.sort((a, b) => a.time - b.time);
+        log(`🎯 ${label} 解析完了: ${parsedNotes.length} ノーツ`);
+    }
+
+    function enableUI() { playBtn.disabled = false; seekBar.disabled = false; courseSelect.disabled = false; }
+    function resetUI() { pauseAudio(); isPlaying = false; playBtn.textContent = '▶️ 再生'; pausedAt = 0; }
+
+    playBtn.addEventListener('click', () => {
+        if (isPlaying) { pauseAudio(); playBtn.textContent = '▶️ 再生'; }
+        else { playAudio(); playBtn.textContent = '⏸ 一時停止'; }
+    });
+
+    seekBar.addEventListener('input', () => {
+        pausedAt = parseFloat(seekBar.value);
+        if (isPlaying) { pauseAudio(); playAudio(); }
+        parsedNotes.forEach(n => n.hit = false);
+        combo = 0; score = 0; judgeTexts = [];
+    });
+
+    courseSelect.addEventListener('change', () => {
+        loadCourseNotes(courseSelect.value);
+        pausedAt = 0;
+    });
+
+    function startDrawingLoop() {
+        if (animationId) cancelAnimationFrame(animationId);
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const now = getCurrentTime();
+            if (isPlaying) { seekBar.value = now; timeDisplay.textContent = formatTime(now); }
+
+            // 現在のBPMとSCROLLを特定
+            let activeBpm = globalTjaData.bpm;
+            for (let n of parsedNotes) {
+                if (n.time <= now) activeBpm = n.bpm;
+                else break;
+            }
+            const baseSpeed = (activeBpm / 60) * 250;
+
+            // 判定枠描画
+            ctx.strokeStyle = hitEffectTimer > 0 ? "#fff" : "#555";
+            ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(TARGET_X, Y_CENTER, 30, 0, Math.PI*2); ctx.stroke();
+            if (hitEffectTimer > 0) hitEffectTimer--;
+
+            parsedNotes.forEach(n => {
+                if (!n.hit && now >= n.time) {
+                    if (autoPlayCheck.checked) {
+                        n.hit = true; hitEffectTimer = 10;
+                        combo++; score += 300;
+                        playSE(n.type === 1 || n.type === 3 ? 'don' : 'ka', n.type > 2);
+                        judgeTexts.push({text: '良', time: now});
+                    } else if (now - n.time > 0.1) {
+                        n.hit = true; combo = 0;
+                        judgeTexts.push({text: '不可', time: now});
+                    }
+                }
+
+                if (!n.hit) {
+                    const x = TARGET_X + (n.time - now) * (baseSpeed * n.scroll);
+                    if (x > 0 && x < canvas.width) {
+                        ctx.fillStyle = (n.type === 1 || n.type === 3) ? "#ff5252" : "#448aff";
+                        const radius = (n.type === 3 || n.type === 4) ? 28 : 20;
+                        ctx.beginPath(); ctx.arc(x, Y_CENTER, radius, 0, Math.PI*2); ctx.fill();
+                        ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke();
+                    }
+                }
+            });
+
+            // コンボ・判定テキスト
+            ctx.fillStyle = "#fff"; ctx.font = "bold 30px sans-serif"; ctx.textAlign = "center";
+            if (combo > 0) ctx.fillText(`${combo} COMBO`, TARGET_X, Y_CENTER - 70);
+            
+            judgeTexts = judgeTexts.filter(j => now - j.time < 0.5);
+            judgeTexts.forEach(j => {
+                ctx.globalAlpha = 1 - (now - j.time) * 2;
+                ctx.fillText(j.text, TARGET_X, Y_CENTER - 40);
+            });
+            ctx.globalAlpha = 1.0;
+
+            animationId = requestAnimationFrame(draw);
+        }
+        draw();
+    }
+
+    // キーボード入力
+    document.addEventListener('keydown', (e) => {
+        if (autoPlayCheck.checked || !isPlaying) return;
+        const key = e.key.toLowerCase();
+        const isDon = key === 'f' || key === 'j';
+        const isKa = key === 'd' || key === 'k';
+        if (!isDon && !isKa) return;
+
+        const now = getCurrentTime();
+        const target = parsedNotes.find(n => !n.hit && Math.abs(n.time - now) < 0.1);
+        if (target) {
+            const match = (isDon && (target.type===1 || target.type===3)) || (isKa && (target.type===2 || target.type===4));
+            if (match) {
+                target.hit = true; hitEffectTimer = 10; combo++; score += 300;
+                judgeTexts.push({text: '良', time: now});
+                playSE(isDon ? 'don' : 'ka', target.type > 2);
+            }
+        } else {
+            playSE(isDon ? 'don' : 'ka');
+        }
+    });
+</script>
+</body>
+</html>
