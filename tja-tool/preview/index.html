@@ -2,363 +2,260 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>TJA プレビューア (Fixed Sync Edition)</title>
+    <title>TJA Previewer - Ultimate Sync</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background-color: #2b2b2b; color: #fff;}
-        .container { max-width: 900px; margin: 0 auto; background: #3c3f41; padding: 20px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); }
-        #drop-zone { border: 3px dashed #777; padding: 30px; text-align: center; margin-bottom: 20px; background: #2b2b2b; border-radius: 12px; cursor: pointer; transition: 0.2s; font-weight: bold; color: #aaa;}
-        #drop-zone.dragover { background: #1e3a5f; border-color: #4facfe; color: #4facfe; }
-        .controls { display: flex; align-items: center; gap: 15px; background: #1e1e1e; padding: 15px; border-radius: 8px; margin-bottom: 20px; flex-wrap: wrap;}
-        button { background: #00b0ff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.2s; }
-        button:hover { background: #0081cb; }
-        button:disabled { background: #555; cursor: not-allowed; }
-        .slider-group { display: flex; align-items: center; gap: 10px; flex-grow: 1; min-width: 200px;}
-        input[type="range"] { flex-grow: 1; cursor: pointer; }
-        .settings-group { display: flex; align-items: center; gap: 15px; background: #444; padding: 10px 15px; border-radius: 4px;}
-        select { padding: 5px 10px; font-size: 16px; font-weight: bold; border-radius: 4px; cursor: pointer; background: #222; color: #fff; border: 1px solid #666;}
-        canvas { background: #000; width: 100%; height: 250px; display: block; border-radius: 8px; box-shadow: inset 0 0 20px rgba(255,255,255,0.1); border: 2px solid #555;}
-        #log { background: #111; color: #0f0; padding: 10px; height: 100px; overflow-y: auto; font-family: monospace; font-size: 13px; border-radius: 8px; margin-top: 10px; border: 1px solid #333;}
-        .key-guide { background: #1e1e1e; padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: center; font-size: 14px; color: #ccc;}
-        .key { display: inline-block; background: #333; border: 1px solid #666; border-radius: 4px; padding: 2px 8px; font-weight: bold; margin: 0 4px; box-shadow: 0 2px 0 #000;}
-        .key-don { color: #ff5252; } .key-ka { color: #448aff; }
+        body { font-family: sans-serif; background: #1a1a1a; color: #fff; padding: 20px; margin: 0; }
+        .container { max-width: 950px; margin: 0 auto; background: #2d2d2d; padding: 20px; border-radius: 12px; }
+        #tja-editor { width: 100%; height: 80px; background: #000; color: #0f0; border: 1px solid #555; font-family: monospace; padding: 10px; margin-bottom: 10px; }
+        .controls { display: flex; align-items: center; gap: 15px; background: #333; padding: 15px; border-radius: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+        button { background: #00b0ff; color: #fff; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .game-screen { width: 100%; height: 160px; background: #000; border: 4px solid #444; border-radius: 10px; overflow: hidden; }
+        canvas { width: 100%; height: 100%; }
+        .speed-ctrl { display: flex; align-items: center; gap: 5px; background: #444; padding: 5px 10px; border-radius: 4px; }
+        #status-bar { font-size: 12px; color: #0f0; margin-top: 8px; font-family: monospace; background: #000; padding: 8px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="margin-top:0; color: #fff;">🥁 TJA プレビューア <small style="color:#aaa; font-size:16px;">(Fixed Sync)</small></h2>
-    
-    <div id="drop-zone" onclick="document.getElementById('file-input').click()">
-        📁 ここに ZIPファイル（.tja + 音声）をドロップ
-        <input type="file" id="file-input" accept=".zip" style="display: none;">
+    <textarea id="tja-editor" placeholder="TJA貼り付け..."></textarea>
+    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <button onclick="document.getElementById('f-combined').click()">📄 ZIP / TJA 読込</button>
+        <button onclick="document.getElementById('f-audio-only').click()">🎵 音声読込</button>
+        <button id="apply-btn" style="background:#4caf50; flex:1;">反映 (APPLY)</button>
+        <input type="file" id="f-combined" accept=".tja,.zip" style="display:none">
+        <input type="file" id="f-audio-only" accept="audio/*" style="display:none">
     </div>
-
-    <div class="key-guide">
-        【操作】 ドン: <span class="key key-don">F</span> <span class="key key-don">J</span> ｜ カッ: <span class="key key-ka">D</span> <span class="key key-ka">K</span>
-    </div>
-
     <div class="controls">
-        <button id="play-btn" disabled>▶️ 再生</button>
-        <div class="slider-group">
-            <span id="time-display">0:00</span>
-            <input type="range" id="seek-bar" value="0" step="0.01" disabled>
-            <span id="duration-display">0:00</span>
+        <button id="play-btn">▶ 再生 / 停止</button>
+        <input type="range" id="seek-bar" value="0" step="0.01">
+        <span id="time-display">0.00</span>
+        <div class="speed-ctrl">
+            速度: <input type="number" id="speed-num" value="1.0" step="0.01" min="0.1" max="5.0" style="width:50px;">
         </div>
-        <div class="settings-group">
-            <select id="course-select" disabled></select>
-            <label style="cursor: pointer;">
-                <input type="checkbox" id="auto-play-check" checked> オート
-            </label>
-        </div>
+        <select id="course-select"></select>
+        <label><input type="checkbox" id="auto-play" checked> AUTO</label>
     </div>
-
-    <canvas id="game-canvas" width="900" height="250"></canvas>
-    <pre id="log">ZIPファイルを読み込んでください...</pre>
+    <div class="game-screen"><canvas id="game-canvas"></canvas></div>
+    <div id="status-bar">READY</div>
 </div>
 
 <script>
-    const dropZone = document.getElementById('drop-zone');
-    const fileInput = document.getElementById('file-input');
-    const logEl = document.getElementById('log');
-    const canvas = document.getElementById('game-canvas');
-    const ctx = canvas.getContext('2d');
+const canvas = document.getElementById('game-canvas'), ctx = canvas.getContext('2d');
+const notesImg = new Image();
+notesImg.src = "https://raw.githubusercontent.com/shiratama-kotone/any-app/main/assets/taiko/notes.png";
 
-    const playBtn = document.getElementById('play-btn');
-    const seekBar = document.getElementById('seek-bar');
-    const timeDisplay = document.getElementById('time-display');
-    const durationDisplay = document.getElementById('duration-display');
-    const autoPlayCheck = document.getElementById('auto-play-check');
-    const courseSelect = document.getElementById('course-select');
+const SPRITES = {
+    1: { x: 202, w: 78 }, 2: { x: 360, w: 80 }, 3: { x: 495, w: 128 }, 4: { x: 655, w: 128 },
+    5: { x: 838, w: 82 }, 55: { x: 960, w: 160 }, 6: { x: 1295, w: 125 }, 66: { x: 1440, w: 160 },
+    7: { x: 1798, w: 212 }, 8: { x: 1145, w: 75 }, 9: { x: 2095, w: 130 }, judge: { x: 15, w: 130 }
+};
 
-    let parsedNotes = [];
-    let animationId = null;
-    let hitEffectTimer = 0;
-    let judgeTexts = [];
-    let combo = 0; let score = 0;
-    let totalRollHits = 0;
-    let currentRollHits = 0;
-    let lastRollEndTime = 0;
+const TARGET_X = 150, Y_CENTER = 75, PX_PER_SEC = 400, SCALE = 0.5;
+
+// Audioシステム
+const audio = new Audio();
+let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let se = {}, playbackRate = 1.0;
+let courses = {}, currentCourse = null, notes = [], bars = [], effects = [];
+
+// 音楽をAudioContextに接続
+const source = audioCtx.createMediaElementSource(audio);
+source.connect(audioCtx.destination);
+
+function setupCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+}
+setupCanvas();
+
+async function initSE() {
+    const base = "https://raw.githubusercontent.com/shiratama-kotone/any-app/main/assets/taiko/";
+    const names = ['dong', 'ka', 'balloon'];
+    for(let n of names) {
+        const r = await fetch(base + (n==='dong'?'dong.wav':n==='ka'?'ka.wav':'balloon.wav'));
+        se[n] = await audioCtx.decodeAudioData(await r.arrayBuffer());
+    }
+}
+initSE();
+
+function playSE(type) {
+    if (!se[type]) return;
+    const s = audioCtx.createBufferSource();
+    s.buffer = se[type];
+    s.playbackRate.value = 1.0; // SEのピッチは固定
+    s.connect(audioCtx.destination);
+    s.start(0);
+}
+
+function parseTJA(text) {
+    courses = {}; let gBpm = 120, gOff = 0;
+    const lines = text.split('\n').map(l => l.split('//')[0].trim());
+    lines.forEach(l => {
+        if(l.toUpperCase().startsWith('BPM:')) gBpm = parseFloat(l.split(':')[1]) || 120;
+        if(l.toUpperCase().startsWith('OFFSET:')) gOff = parseFloat(l.split(':')[1]) || 0;
+    });
+    let cur = 'ONI';
+    lines.forEach(l => {
+        if(l.toUpperCase().startsWith('COURSE:')) cur = l.split(':')[1].trim().toUpperCase();
+        if(!courses[cur]) courses[cur] = { lines: [], bpm: gBpm, offset: gOff };
+        courses[cur].lines.push(l);
+    });
+    document.getElementById('course-select').innerHTML = Object.keys(courses).map(k => `<option>${k}</option>`).join('');
+    loadCourse(Object.keys(courses)[0]);
+}
+
+function loadCourse(label) {
+    const c = courses[label]; if(!c) return;
+    currentCourse = c; notes = []; bars = []; effects = [];
+    let bpm = c.bpm, scroll = 1.0, measure = 1.0, curTime = 0, started = false, balloons = [], rollStack = [];
+    c.lines.forEach(l => {
+        const u = l.toUpperCase();
+        if(u.startsWith('#BALLOON')) balloons = l.split(':')[1].split(',').map(v => parseInt(v)||5);
+        if(u === '#START') { started = true; return; }
+        if(u === '#END') { started = false; return; }
+        if(!started) return;
+        if(l.startsWith('#')) {
+            const p = u.split(' ');
+            if(p[0]==='#BPMCHANGE') bpm = parseFloat(p[1]);
+            if(p[0]==='#SCROLL') scroll = parseFloat(p[1]);
+            if(p[0]==='#MEASURE') { const m = p[1].split('/'); if(m[1]) measure = parseFloat(m[0])/parseFloat(m[1]); }
+        } else if(l.includes(',') || /^[0-9]+$/.test(l)) {
+            const ss = l.split(',');
+            ss.forEach((s, idx) => {
+                const data = s.replace(/\s+/g, '');
+                const mDur = (60/bpm)*4*measure;
+                for(let i=0; i<data.length; i++) {
+                    const type = parseInt(data[i]);
+                    const time = curTime + (mDur * (i/data.length));
+                    if(type >= 1 && type <= 9 && type !== 8) {
+                        const n = { time, type, scroll, hit: false, fin: false, endTime: time, req: [7,9].includes(type)?(balloons.shift()||5):0, curH: 0, lastA: time };
+                        notes.push(n); if([5,6,7,9].includes(type)) rollStack.push(n);
+                    } else if(type === 8) { rollStack.forEach(r => r.endTime = time); rollStack = []; }
+                }
+                if(idx < ss.length - 1) { curTime += mDur; bars.push({ time: curTime, scroll }); }
+            });
+        }
+    });
+}
+
+function update() {
+    const dprW = canvas.width / (window.devicePixelRatio || 1);
+    ctx.fillStyle = "#1a1a1a"; ctx.fillRect(0, 0, dprW, 160);
     
-    const TARGET_X = 180;
-    const Y_CENTER = 150;
+    // 時間の取得とOFFSET補正
+    const currentTime = audio.currentTime;
+    const now = currentTime + (currentCourse ? currentCourse.offset : 0);
+    
+    document.getElementById('time-display').textContent = currentTime.toFixed(2);
+    document.getElementById('seek-bar').value = currentTime;
 
-    let coursesData = {};
-    let globalTjaData = { bpm: 120, offset: 0 };
-    const courseMap = { '0': 'Easy', 'easy': 'Easy', '1': 'Normal', 'normal': 'Normal', '2': 'Hard', 'hard': 'Hard', '3': 'Oni', 'oni': 'Oni', '4': 'Edit', 'edit': 'Edit' };
+    ctx.fillStyle = "#000"; ctx.fillRect(0, Y_CENTER-35, dprW, 70);
+    bars.forEach(b => {
+        const x = TARGET_X + (b.time - now) * (PX_PER_SEC * b.scroll);
+        if(x > 0 && x < dprW) { ctx.strokeStyle = "#444"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, Y_CENTER-35); ctx.lineTo(x, Y_CENTER+35); ctx.stroke(); }
+    });
 
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const masterGain = audioContext.createGain();
-    masterGain.connect(audioContext.destination);
+    const sj = SPRITES.judge;
+    ctx.drawImage(notesImg, sj.x, 0, sj.w, 150, TARGET_X - (sj.w*SCALE)/2, Y_CENTER - 75*SCALE, sj.w*SCALE, 150*SCALE);
 
-    let audioBuffer = null;
-    let audioSource = null;
-    let startTime = 0;
-    let pausedAt = 0;
-    let isPlaying = false;
-
-    function getCurrentTime() {
-        if (!isPlaying) return pausedAt;
-        return audioContext.currentTime - startTime;
-    }
-
-    function playAudio() {
-        if (!audioBuffer) return;
-        if (audioContext.state === 'suspended') audioContext.resume();
-        audioSource = audioContext.createBufferSource();
-        audioSource.buffer = audioBuffer;
-        audioSource.connect(masterGain);
-        audioSource.onended = () => {
-            if (isPlaying && getCurrentTime() >= audioBuffer.duration - 0.1) {
-                isPlaying = false;
-                playBtn.textContent = '▶️ 再生';
-                pausedAt = audioBuffer.duration;
+    const isAuto = document.getElementById('auto-play').checked;
+    notes.forEach(n => {
+        // AUTO判定
+        if(isAuto && !audio.paused) {
+            if(!n.hit && n.type <= 4 && now >= n.time) {
+                n.hit = true;
+                playSE([1,3].includes(n.type) ? 'dong' : 'ka');
+                effects.push({ t: "良", time: Date.now() });
             }
-        };
-        audioSource.start(0, pausedAt);
-        startTime = audioContext.currentTime - pausedAt;
-        isPlaying = true;
-    }
-
-    function pauseAudio() {
-        if (!isPlaying || !audioSource) return;
-        audioSource.stop();
-        pausedAt = audioContext.currentTime - startTime;
-        isPlaying = false;
-    }
-
-    function playSE(type, isBig = false) {
-        const osc = audioContext.createOscillator();
-        const g = audioContext.createGain();
-        osc.connect(g); g.connect(masterGain);
-        const now = audioContext.currentTime;
-        const vol = isBig ? 1.0 : 0.6;
-        if (type === 'don') {
-            osc.frequency.setValueAtTime(150, now);
-            osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.1);
-        } else {
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(400, now);
-            osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.05);
+            if(now >= n.time && now < n.endTime && !n.fin) {
+                const interval = 1/30;
+                if(now >= n.lastA + interval) {
+                    playSE('dong'); n.curH++; n.lastA = now;
+                    if([7,9].includes(n.type) && n.curH >= n.req) { n.fin = true; playSE('balloon'); }
+                }
+            } else if(now >= n.endTime) { n.fin = true; }
         }
-        g.gain.setValueAtTime(vol, now);
-        g.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-        osc.start(); osc.stop(now + 0.1);
-    }
 
-    function log(msg) { logEl.textContent += msg + '\n'; logEl.scrollTop = logEl.scrollHeight; }
-    function formatTime(sec) {
-        const m = Math.floor(sec / 60); const s = Math.floor(Math.max(0, sec) % 60).toString().padStart(2, '0');
-        return `${m}:${s}`;
-    }
+        // 描画
+        const x = TARGET_X + (n.time - now) * (PX_PER_SEC * n.scroll);
+        const xEnd = TARGET_X + (n.endTime - now) * (PX_PER_SEC * n.scroll);
+        if(xEnd < -200 || x > dprW + 200 || (n.fin && [7,9].includes(n.type))) return;
 
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault(); dropZone.classList.remove('dragover');
-        if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
-    });
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-    fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFile(e.target.files[0]); });
-
-    async function handleFile(file) {
-        if (!file.name.endsWith('.zip')) return alert('ZIPファイルをドロップしてください。');
-        logEl.textContent = ''; log(`📁 [${file.name}] 展開中...`);
-        resetUI();
-        try {
-            const zip = await JSZip.loadAsync(file);
-            let tjaEntry = null, audioEntry = null;
-            zip.forEach((path, entry) => {
-                if (path.toLowerCase().endsWith('.tja')) tjaEntry = entry;
-                if (path.toLowerCase().match(/\.(ogg|mp3|wav)$/)) audioEntry = entry;
-            });
-            if (!tjaEntry || !audioEntry) throw new Error('TJAまたは音声ファイルが見つかりません。');
-            const tjaUint8 = await tjaEntry.async('uint8array');
-            let tjaText = new TextDecoder().decode(tjaUint8);
-            if (tjaText.includes('')) tjaText = new TextDecoder('shift_jis').decode(tjaUint8);
-            parseTJAStructure(tjaText);
-            const arrayBuffer = await audioEntry.async('arraybuffer');
-            audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-            seekBar.max = audioBuffer.duration;
-            durationDisplay.textContent = formatTime(audioBuffer.duration);
-            enableUI(); log(`🚀 準備完了！`);
-            startDrawingLoop();
-        } catch (e) { log(`❌ エラー: ${e.message}`); }
-    }
-
-    function parseTJAStructure(text) {
-        coursesData = {}; globalTjaData = { bpm: 120, offset: 0 };
-        const lines = text.split(/\r?\n/);
-        let currentCourse = 'Oni';
-        lines.forEach(line => {
-            let t = line.split('//')[0].trim();
-            if (!t) return;
-            if (t.startsWith('BPM:')) globalTjaData.bpm = parseFloat(t.split(':')[1]);
-            else if (t.startsWith('OFFSET:')) globalTjaData.offset = parseFloat(t.split(':')[1]);
-            else if (t.startsWith('COURSE:')) currentCourse = courseMap[t.split(':')[1].trim().toLowerCase()] || t.split(':')[1].trim();
-            if (!coursesData[currentCourse]) coursesData[currentCourse] = [];
-            coursesData[currentCourse].push(t);
-        });
-        courseSelect.innerHTML = '';
-        Object.keys(coursesData).forEach(c => {
-            const opt = document.createElement('option'); opt.value = c; opt.textContent = c; courseSelect.appendChild(opt);
-        });
-        courseSelect.value = Object.keys(coursesData).includes('Oni') ? 'Oni' : Object.keys(coursesData)[0];
-        loadCourseNotes(courseSelect.value);
-    }
-
-    function loadCourseNotes(label) {
-        parsedNotes = []; combo = 0; score = 0; judgeTexts = [];
-        let currentBpm = globalTjaData.bpm;
-        let currentMeasure = 4;
-        let currentTime = -globalTjaData.offset;
-        let currentScroll = 1.0;
-        let isStarted = false;
-        let measureNotes = [];
-
-        coursesData[label].forEach(line => {
-            if (line === '#START') { isStarted = true; return; }
-            if (line === '#END') { isStarted = false; return; }
-            if (!isStarted) return;
-
-            if (line.startsWith('#')) {
-                const parts = line.split(' ');
-                const cmd = parts[0];
-                const val = parts[1];
-                if (cmd === '#BPMCHANGE') currentBpm = parseFloat(val);
-                else if (cmd === '#SCROLL') currentScroll = parseFloat(val);
-                else if (cmd === '#MEASURE') {
-                    const m = val.split('/');
-                    currentMeasure = (parseFloat(m[0]) / parseFloat(m[1])) * 4;
-                }
-                else if (cmd === '#DELAY') currentTime += parseFloat(val);
-            } else if (line.includes(',')) {
-                const parts = line.split(',');
-                parts.forEach((part, idx) => {
-                    const notes = part.replace(/\s+/g, '').split('');
-                    if (notes.length > 0) {
-                        const duration = currentMeasure * (60 / currentBpm);
-                        notes.forEach((n, nIdx) => {
-                            const noteType = parseInt(n);
-                            if (noteType > 0 && noteType < 8) {
-                                parsedNotes.push({
-                                    time: currentTime + (duration * (nIdx / notes.length)),
-                                    type: noteType,
-                                    bpm: currentBpm,
-                                    scroll: currentScroll,
-                                    hit: false
-                                });
-                            }
-                        });
-                        currentTime += duration;
-                    }
-                });
+        const s = SPRITES[n.type];
+        if([5,6].includes(n.type)) {
+            const bS = SPRITES[n.type===5?55:66], tS = SPRITES[8];
+            for(let bx = x; bx < xEnd; bx += bS.w*SCALE) {
+                const tw = Math.min(bS.w, (xEnd-bx)/SCALE);
+                ctx.drawImage(notesImg, bS.x, 0, tw, 150, bx, Y_CENTER-75*SCALE, tw*SCALE, 150*SCALE);
             }
-        });
-        parsedNotes.sort((a, b) => a.time - b.time);
-        log(`🎯 ${label} 解析完了: ${parsedNotes.length} ノーツ`);
-    }
-
-    function enableUI() { playBtn.disabled = false; seekBar.disabled = false; courseSelect.disabled = false; }
-    function resetUI() { pauseAudio(); isPlaying = false; playBtn.textContent = '▶️ 再生'; pausedAt = 0; }
-
-    playBtn.addEventListener('click', () => {
-        if (isPlaying) { pauseAudio(); playBtn.textContent = '▶️ 再生'; }
-        else { playAudio(); playBtn.textContent = '⏸ 一時停止'; }
-    });
-
-    seekBar.addEventListener('input', () => {
-        pausedAt = parseFloat(seekBar.value);
-        if (isPlaying) { pauseAudio(); playAudio(); }
-        parsedNotes.forEach(n => n.hit = false);
-        combo = 0; score = 0; judgeTexts = [];
-    });
-
-    courseSelect.addEventListener('change', () => {
-        loadCourseNotes(courseSelect.value);
-        pausedAt = 0;
-    });
-
-    function startDrawingLoop() {
-        if (animationId) cancelAnimationFrame(animationId);
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const now = getCurrentTime();
-            if (isPlaying) { seekBar.value = now; timeDisplay.textContent = formatTime(now); }
-
-            // 現在のBPMとSCROLLを特定
-            let activeBpm = globalTjaData.bpm;
-            for (let n of parsedNotes) {
-                if (n.time <= now) activeBpm = n.bpm;
-                else break;
-            }
-            const baseSpeed = (activeBpm / 60) * 250;
-
-            // 判定枠描画
-            ctx.strokeStyle = hitEffectTimer > 0 ? "#fff" : "#555";
-            ctx.lineWidth = 4;
-            ctx.beginPath(); ctx.arc(TARGET_X, Y_CENTER, 30, 0, Math.PI*2); ctx.stroke();
-            if (hitEffectTimer > 0) hitEffectTimer--;
-
-            parsedNotes.forEach(n => {
-                if (!n.hit && now >= n.time) {
-                    if (autoPlayCheck.checked) {
-                        n.hit = true; hitEffectTimer = 10;
-                        combo++; score += 300;
-                        playSE(n.type === 1 || n.type === 3 ? 'don' : 'ka', n.type > 2);
-                        judgeTexts.push({text: '良', time: now});
-                    } else if (now - n.time > 0.1) {
-                        n.hit = true; combo = 0;
-                        judgeTexts.push({text: '不可', time: now});
-                    }
-                }
-
-                if (!n.hit) {
-                    const x = TARGET_X + (n.time - now) * (baseSpeed * n.scroll);
-                    if (x > 0 && x < canvas.width) {
-                        ctx.fillStyle = (n.type === 1 || n.type === 3) ? "#ff5252" : "#448aff";
-                        const radius = (n.type === 3 || n.type === 4) ? 28 : 20;
-                        ctx.beginPath(); ctx.arc(x, Y_CENTER, radius, 0, Math.PI*2); ctx.fill();
-                        ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke();
-                    }
-                }
-            });
-
-            // コンボ・判定テキスト
-            ctx.fillStyle = "#fff"; ctx.font = "bold 30px sans-serif"; ctx.textAlign = "center";
-            if (combo > 0) ctx.fillText(`${combo} COMBO`, TARGET_X, Y_CENTER - 70);
-            
-            judgeTexts = judgeTexts.filter(j => now - j.time < 0.5);
-            judgeTexts.forEach(j => {
-                ctx.globalAlpha = 1 - (now - j.time) * 2;
-                ctx.fillText(j.text, TARGET_X, Y_CENTER - 40);
-            });
-            ctx.globalAlpha = 1.0;
-
-            animationId = requestAnimationFrame(draw);
+            ctx.drawImage(notesImg, tS.x, 0, tS.w, 150, xEnd - (tS.w*SCALE)/2, Y_CENTER-75*SCALE, tS.w*SCALE, 150*SCALE);
         }
-        draw();
-    }
-
-    // キーボード入力
-    document.addEventListener('keydown', (e) => {
-        if (autoPlayCheck.checked || !isPlaying) return;
-        const key = e.key.toLowerCase();
-        const isDon = key === 'f' || key === 'j';
-        const isKa = key === 'd' || key === 'k';
-        if (!isDon && !isKa) return;
-
-        const now = getCurrentTime();
-        const target = parsedNotes.find(n => !n.hit && Math.abs(n.time - now) < 0.1);
-        if (target) {
-            const match = (isDon && (target.type===1 || target.type===3)) || (isKa && (target.type===2 || target.type===4));
-            if (match) {
-                target.hit = true; hitEffectTimer = 10; combo++; score += 300;
-                judgeTexts.push({text: '良', time: now});
-                playSE(isDon ? 'don' : 'ka', target.type > 2);
+        if(!n.hit || n.type > 4) {
+            const drawX = ([7,9,5,6].includes(n.type) && now >= n.time && now < n.endTime) ? TARGET_X : x;
+            ctx.drawImage(notesImg, s.x, 0, s.w, 150, drawX - (s.w*SCALE)/2, Y_CENTER-75*SCALE, s.w*SCALE, 150*SCALE);
+            if([7,9].includes(n.type) && now >= n.time) {
+                ctx.fillStyle="#fff"; ctx.font="bold 24px Arial"; ctx.textAlign="center";
+                ctx.fillText(Math.max(0, n.req - n.curH), drawX, Y_CENTER + 60);
             }
-        } else {
-            playSE(isDon ? 'don' : 'ka');
         }
     });
+
+    effects = effects.filter(e => {
+        const age = Date.now() - e.time;
+        if(age < 300) { ctx.globalAlpha = 1 - (age/300); ctx.fillStyle = "#ff0"; ctx.font = "bold 30px Arial"; ctx.textAlign = "center"; ctx.fillText(e.t, TARGET_X, Y_CENTER - 45); ctx.globalAlpha = 1; return true; }
+        return false;
+    });
+    requestAnimationFrame(update);
+}
+update();
+
+document.getElementById('play-btn').onclick = () => {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    audio.paused ? audio.play() : audio.pause();
+};
+
+document.getElementById('apply-btn').onclick = () => parseTJA(document.getElementById('tja-editor').value);
+
+document.getElementById('speed-num').onchange = (e) => {
+    playbackRate = parseFloat(e.target.value) || 1.0;
+    audio.playbackRate = playbackRate;
+    audio.preservesPitch = true;
+};
+
+document.getElementById('f-combined').onchange = async (e) => {
+    const f = e.target.files[0]; if(!f) return;
+    if(f.name.endsWith('.zip')) {
+        const zip = await JSZip.loadAsync(f);
+        for(let p in zip.files) {
+            if(p.endsWith('.tja')) {
+                const txt = new TextDecoder("shift_jis").decode(await zip.files[p].async("uint8array"));
+                document.getElementById('tja-editor').value = txt; parseTJA(txt);
+            }
+            if(p.match(/\.(ogg|wav|mp3)$/i)) {
+                audio.src = URL.createObjectURL(new Blob([await zip.files[p].async("arraybuffer")]));
+            }
+        }
+    } else {
+        const r = new FileReader(); r.onload = () => { document.getElementById('tja-editor').value = r.result; parseTJA(r.result); }; r.readAsText(f, "shift_jis");
+    }
+};
+
+document.getElementById('f-audio-only').onchange = (e) => {
+    if(e.target.files[0]) audio.src = URL.createObjectURL(e.target.files[0]);
+};
+
+audio.onloadedmetadata = () => { document.getElementById('seek-bar').max = audio.duration; };
+
+document.getElementById('seek-bar').oninput = (e) => {
+    audio.currentTime = parseFloat(e.target.value);
+    notes.forEach(n => { n.hit = n.fin = false; n.curH = 0; n.lastA = n.time; });
+};
+
+document.getElementById('course-select').onchange = (e) => loadCourse(e.target.value);
 </script>
 </body>
 </html>
