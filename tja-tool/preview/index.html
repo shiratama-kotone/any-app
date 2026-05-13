@@ -10,19 +10,15 @@
         #tja-editor { width: 100%; height: 80px; background: #000; color: #0f0; border: 1px solid #555; font-family: monospace; padding: 10px; margin-bottom: 10px; box-sizing: border-box; }
         .controls { display: flex; align-items: center; gap: 15px; background: #333; padding: 15px; border-radius: 8px; margin-bottom: 10px; flex-wrap: wrap; }
         button { background: #00b0ff; color: #fff; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .game-screen { width: 100%; height: 160px; background: #000; border: 4px solid #444; border-radius: 10px; overflow: hidden; position: relative; }
-        canvas { width: 100%; height: 100%; display: block; }
+        .game-screen { width: 100%; background: #000; border: 4px solid #444; border-radius: 10px; overflow: hidden; position: relative; }
+        canvas { width: 100%; display: block; }
         .speed-ctrl { display: flex; align-items: center; gap: 5px; background: #444; padding: 5px 10px; border-radius: 4px; }
         #status-bar { font-size: 12px; color: #0f0; margin-top: 8px; font-family: monospace; background: #000; padding: 8px; }
-
-        /* 譜面分岐バッジ */
         .branch-badge {
-            position: absolute;
-            top: 4px; right: 8px;
+            position: absolute; top: 4px; right: 8px;
             font-size: 11px; font-weight: bold;
             padding: 2px 8px; border-radius: 4px;
-            pointer-events: none;
-            display: none;
+            pointer-events: none; display: none;
         }
         .branch-badge.normal { background: #4a7; color: #fff; display: block; }
         .branch-badge.expert { background: #d4a; color: #fff; display: block; }
@@ -58,66 +54,56 @@
 
 <script>
 const canvas = document.getElementById('game-canvas');
-const ctx = canvas.getContext('2d');
+const ctx    = canvas.getContext('2d');
 
-const notesImg = new Image();
-notesImg.src = "https://raw.githubusercontent.com/shiratama-kotone/any-app/main/assets/taiko/notes.png";
-
-// 分岐バナー画像
+const notesImg  = new Image();
+notesImg.src    = "https://raw.githubusercontent.com/shiratama-kotone/any-app/main/assets/taiko/notes.png";
+const gaugeImg  = new Image();
+gaugeImg.src    = "https://github.com/shiratama-kotone/any-app/blob/main/assets/taiko/normagauge.png?raw=true";
 const imgNormal = new Image();
-imgNormal.src = "https://github.com/shiratama-kotone/any-app/blob/main/assets/taiko/%E6%99%AE%E9%80%9A.png?raw=true";
+imgNormal.src   = "https://github.com/shiratama-kotone/any-app/blob/main/assets/taiko/%E6%99%AE%E9%80%9A.png?raw=true";
 const imgExpert = new Image();
-imgExpert.src = "https://github.com/shiratama-kotone/any-app/blob/main/assets/taiko/%E7%8E%84%E4%BA%BA.png?raw=true";
+imgExpert.src   = "https://github.com/shiratama-kotone/any-app/blob/main/assets/taiko/%E7%8E%84%E4%BA%BA.png?raw=true";
 const imgMaster = new Image();
-imgMaster.src = "https://github.com/shiratama-kotone/any-app/blob/main/assets/taiko/%E9%81%94%E4%BA%BA.png?raw=true";
+imgMaster.src   = "https://github.com/shiratama-kotone/any-app/blob/main/assets/taiko/%E9%81%94%E4%BA%BA.png?raw=true";
 
 const SPRITES = {
-    1:  { x: 202,  w: 78  },
-    2:  { x: 360,  w: 80  },
-    3:  { x: 495,  w: 128 },
-    4:  { x: 655,  w: 128 },
-    5:  { x: 838,  w: 82  },
-    55: { x: 960,  w: 160 },
-    6:  { x: 1295, w: 125 },
-    66: { x: 1440, w: 160 },
-    7:  { x: 1798, w: 212 },
-    8:  { x: 1145, w: 75  },
-    9:  { x: 2095, w: 130 },
-    judge: { x: 15, w: 130 }
+    1:{x:202,w:78},   2:{x:360,w:80},
+    3:{x:495,w:128},  4:{x:655,w:128},
+    5:{x:838,w:82},   55:{x:960,w:160},
+    6:{x:1295,w:125}, 66:{x:1440,w:160},
+    7:{x:1798,w:212}, 8:{x:1145,w:75},
+    9:{x:2095,w:130}, judge:{x:15,w:130}
 };
 
-const TARGET_X = 150;
-const Y_CENTER = 75;
-const BASE_PX = 400;  // 基準BPMでのピクセル/秒
-const SCALE = 0.5;
+const TARGET_X = 150, Y_CENTER = 105, BASE_PX = 400, SCALE = 0.5;
+const CANVAS_H = 240;
 
 // Audio
-const audio = new Audio();
+const audio  = new Audio();
 let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-let se = {}, playbackRate = 1.0;
+let se = {};
+const src = audioCtx.createMediaElementSource(audio);
+src.connect(audioCtx.destination);
 
-const source = audioCtx.createMediaElementSource(audio);
-source.connect(audioCtx.destination);
-
-// パース結果
-let courses = {};
-let currentCourse = null;
+// 状態
+let courses = {}, currentCourse = null;
 let notes = [], bars = [], effects = [];
 let hasBranch = false;
-let currentBranch = 'N';
+// branchTimeline: {branch, startTime, endTime} — curTime基準(OFFSET未加算)
 let branchTimeline = [];
 
-// 連打カウント
-let rollTotalHits = 0;      // 累計連打数（最初の連打から常時表示）
-let rollLastHitTime = -1;   // 最後に連打SEを出した時刻（nowベース）
-let rollCurrentHits = 0;    // 現在の連打数（終了から1秒で消す）
-let rollEndedAt = -999;     // 連打が終わった時刻
+// ゲージ
+let totalNotes = 0, hitNotes = 0, gaugeValue = 0;
+
+// 連打
+let rollTotalHits = 0, rollCurrentHits = 0, rollEndedAt = -999;
 
 function setupCanvas() {
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.parentElement.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
-    canvas.height = 160 * dpr;
+    canvas.width  = rect.width * dpr;
+    canvas.height = CANVAS_H * dpr;
     ctx.scale(dpr, dpr);
 }
 setupCanvas();
@@ -125,9 +111,8 @@ window.addEventListener('resize', setupCanvas);
 
 async function initSE() {
     const base = "https://raw.githubusercontent.com/shiratama-kotone/any-app/main/assets/taiko/";
-    const map = { dong: 'dong.wav', ka: 'ka.wav', balloon: 'balloon.wav' };
-    for (const [n, file] of Object.entries(map)) {
-        const r = await fetch(base + file);
+    for (const [n, f] of [['dong','dong.wav'],['ka','ka.wav'],['balloon','balloon.wav']]) {
+        const r = await fetch(base + f);
         se[n] = await audioCtx.decodeAudioData(await r.arrayBuffer());
     }
 }
@@ -136,78 +121,66 @@ initSE();
 function playSE(type) {
     if (!se[type]) return;
     const s = audioCtx.createBufferSource();
-    s.buffer = se[type];
-    s.connect(audioCtx.destination);
-    s.start(0);
+    s.buffer = se[type]; s.connect(audioCtx.destination); s.start(0);
 }
 
 // =========================================================
-// TJAパーサー
+// パーサー
 // =========================================================
 function parseTJA(text) {
     courses = {};
     let gBpm = 120, gOff = 0;
-    const lines = text.replace(/\r/g, '').split('\n').map(l => l.split('//')[0].trim());
-
-    lines.forEach(l => {
-        const u = l.toUpperCase();
+    const lines = text.replace(/\r/g, '').split('\n');
+    for (const l of lines) {
+        const u = l.trim().toUpperCase();
         if (u.startsWith('BPM:'))    gBpm = parseFloat(l.split(':')[1]) || 120;
         if (u.startsWith('OFFSET:')) gOff = parseFloat(l.split(':')[1]) || 0;
-    });
-
+    }
     let curLabel = null;
-    lines.forEach(l => {
-        const u = l.toUpperCase();
+    for (const l of lines) {
+        const clean = l.split('//')[0].trim();
+        const u = clean.toUpperCase();
         if (u.startsWith('COURSE:')) {
-            curLabel = l.split(':')[1].trim().toUpperCase();
-            if (!courses[curLabel]) courses[curLabel] = { lines: [], bpm: gBpm, offset: gOff };
+            curLabel = clean.split(':')[1].trim().toUpperCase();
+            if (!courses[curLabel]) courses[curLabel] = { lines:[], bpm:gBpm, offset:gOff };
         }
-        if (curLabel) courses[curLabel].lines.push(l);
-    });
-
+        if (curLabel) courses[curLabel].lines.push(clean);
+    }
     const sel = document.getElementById('course-select');
-    sel.innerHTML = Object.keys(courses).map(k => `<option>${k}</option>`).join('');
+    sel.innerHTML = Object.keys(courses).map(k=>`<option>${k}</option>`).join('');
     loadCourse(Object.keys(courses)[0]);
 }
 
 // =========================================================
-// コースロード（分岐・コンマ結合対応）
+// コースロード
 // =========================================================
 function loadCourse(label) {
-    const c = courses[label];
-    if (!c) return;
+    const c = courses[label]; if (!c) return;
     currentCourse = c;
-    notes = []; bars = []; effects = []; branchTimeline = [];
+    notes=[]; bars=[]; effects=[]; branchTimeline=[];
+    totalNotes=0; hitNotes=0; gaugeValue=0;
+    rollTotalHits=0; rollCurrentHits=0; rollEndedAt=-999;
 
     const lines = c.lines;
-
     hasBranch = lines.some(l => l.toUpperCase().trim().startsWith('#BRANCHSTART'));
-
     const isAuto = document.getElementById('auto-play').checked;
-    // 最初の分岐は常にN、2回目以降はAUTOならM
-    // → flatLines展開時に分岐番号ごとに切り替える
-    currentBranch = 'N';
 
-    // バルーン取得
+    // BALLOON取得
     let balloonsFull = [];
     for (const l of lines) {
-        const u = l.toUpperCase().trim();
-        if (u.startsWith('BALLOON:') || u.startsWith('#BALLOON')) {
-            const val = l.includes(':') ? l.split(':')[1] : l.split(/\s+/)[1];
-            if (val) balloonsFull = val.trim().split(',').map(v => parseInt(v) || 5);
+        if (l.toUpperCase().trim().startsWith('BALLOON:')) {
+            balloonsFull = l.split(':')[1].trim().split(',').map(v=>parseInt(v)||5);
             break;
         }
     }
     let balloonIdx = 0;
 
     // =========================================================
-    // Step1: BRANCHを展開してflatLinesを作る
-    //   1回目の分岐 → N（普通）
-    //   2回目以降  → AUTOならM、非AUTOならN
+    // Step1: 分岐展開 → flatLines (string | marker object)
     // =========================================================
+    // マーカーオブジェクトを使うことで文字列の誤判定を完全回避
     const flatLines = [];
-    let bi = 0;
-    let branchCount = 0;
+    let bi = 0, branchCount = 0;
 
     while (bi < lines.length) {
         const l = lines[bi];
@@ -215,404 +188,523 @@ function loadCourse(label) {
 
         if (u.startsWith('#BRANCHSTART')) {
             branchCount++;
-            // 何番目の分岐かで選択ルートを決める
-            const pick = (branchCount === 1) ? 'N'
-                       : isAuto ? 'M' : 'N';
+            // 1回目は普通(N)優先、2回目以降はAUTO時に達人(M)優先
+            const pick = (branchCount === 1) ? 'N' : (isAuto ? 'M' : 'N');
+
+            // 分岐条件を解析: #BRANCHSTART type,cond_e,cond_m
+            // cond_e == cond_m の場合、玄人(E)ルートは実質なし→Eをスキップ
+            const bsParts = l.split(',');
+            const condE = bsParts[1]?.trim();
+            const condM = bsParts[2]?.trim();
+            const noExpert = (condE !== undefined && condM !== undefined && condE === condM);
             bi++;
 
-            const sections = { N: [], E: [], M: [] };
+            const sections = {N:[],E:[],M:[]};
             let curSec = null;
             while (bi < lines.length) {
-                const bl = lines[bi];
-                const bu = bl.toUpperCase().trim();
-                if (bu === '#N') { curSec = 'N'; bi++; continue; }
-                if (bu === '#E') { curSec = 'E'; bi++; continue; }
-                if (bu === '#M') { curSec = 'M'; bi++; continue; }
+                const bu = lines[bi].toUpperCase().trim();
+                if (bu === '#N') { curSec='N'; bi++; continue; }
+                if (bu === '#E') { curSec='E'; bi++; continue; }
+                if (bu === '#M') { curSec='M'; bi++; continue; }
                 if (bu.startsWith('#BRANCHEND') || bu.startsWith('#BRANCHSTART')) break;
-                if (curSec) sections[curSec].push(bl);
+                if (curSec) sections[curSec].push(lines[bi]);
                 bi++;
             }
             if (bi < lines.length && lines[bi].toUpperCase().trim().startsWith('#BRANCHEND')) bi++;
 
-            // 存在するセクションだけ考慮
-            const exists = ['M','E','N'].filter(p => sections[p]?.length > 0);
-            // pick='N'（最初）→ 最も低いルート（N > E > M 順で最初に存在するもの）
-            // pick='M'（以降）→ 最も高いルート（M > E > N 順で最初に存在するもの）
-            const order = (pick === 'N') ? ['N','E','M'] : ['M','E','N'];
-            let chosen = [], chosenKey = pick;
+            // noExpert時はEを候補から外す
+            // 選択: pick優先で存在するもの
+            const candidates = noExpert ? ['M','N'] : ['M','E','N'];
+            const order = (pick==='N') ? [...candidates].reverse() : candidates;
+            let chosen=[], chosenKey='N';
             for (const p of order) {
-                if (exists.includes(p)) { chosen = sections[p]; chosenKey = p; break; }
+                if (sections[p]?.length) { chosen=sections[p]; chosenKey=p; break; }
             }
-            currentBranch = chosenKey;
-            // 分岐開始/終了マーカーをflatLinesに埋め込む（パース時に時間を記録するため）
-            flatLines.push(`##BRANCH_START ${chosenKey}`);
+
+            // マーカーオブジェクトで囲む
+            flatLines.push({_bStart: true, branch: chosenKey});
             chosen.forEach(bl => flatLines.push(bl));
-            flatLines.push(`##BRANCH_END ${chosenKey}`);
+            flatLines.push({_bEnd:   true, branch: chosenKey});
         } else {
-            flatLines.push(l);
-            bi++;
+            flatLines.push(l); bi++;
         }
     }
 
     // =========================================================
-    // Step2: flatLinesをパース
-    //   コンマが来るまで音符データをバッファに積んで、
-    //   コンマで一括処理する（コンマなし行の重なりを防ぐ）
-    //   途中の#BPMCHANGE/#SCROLL/#MEASUREはコンマ到達時点で適用
+    // Step2: パース（コンマバッファ方式・小節内scroll/bpm変化対応）
+    // noteBufを文字列ではなく {data, scroll, bpm} のチャンクリストで管理する
     // =========================================================
-    let bpm = c.bpm;
-    let scroll = 1.0, measure = 1.0;
-    let curTime = 0;
-    let started = false;
-    let barlineOn = true;
-    let rollStack = [];
+    let bpm=c.bpm, scroll=1.0, measure=1.0;
+    let curTime=0, started=false, barlineOn=true;
+    let rollStack=[];
+    // チャンクバッファ: [{data:string, scroll:number, bpm:number}]
+    let noteBufChunks = [];
+    let currentChunk = null; // 現在積んでいるチャンク
 
-    // コンマまでのバッファ
-    let noteBuf = '';  // 音符データ文字列を結合
+    function getOrNewChunk() {
+        // 現在のscroll/bpmと同じチャンクがあれば再利用、違えば新規
+        if (currentChunk && currentChunk.scroll === scroll && currentChunk.bpm === bpm) {
+            return currentChunk;
+        }
+        currentChunk = {data:'', scroll, bpm};
+        noteBufChunks.push(currentChunk);
+        return currentChunk;
+    }
+
+    // measureStartBpm: 小節開始時のBPM（mDur計算用）
+    let measureStartBpm = c.bpm;
+    let measureStartMeasure = 1.0;
 
     function flushMeasure() {
-        // バッファを現在のbpm/scroll/measureで処理して小節を進める
-        const data = noteBuf.replace(/\s+/g, '');
-        noteBuf = '';
-        const mDur = (60 / bpm) * 4 * measure;
-        if (data.length > 0) {
-            for (let i = 0; i < data.length; i++) {
-                const type = parseInt(data[i]);
-                const noteTime = curTime + mDur * (i / data.length);
-                if (type >= 1 && type <= 9 && type !== 8) {
-                    const req = [7, 9].includes(type) ? (balloonsFull[balloonIdx++] || 5) : 0;
-                    const n = { time: noteTime, type, scroll, bpm, hit: false, fin: false,
-                                endTime: noteTime, req, curH: 0, lastA: noteTime };
+        // 小節の長さは「小節開始時のBPM・拍子」で決まる
+        const mDur = (60 / measureStartBpm) * 4 * measureStartMeasure;
+        const totalLen = noteBufChunks.reduce((s,c)=>s+c.data.length, 0);
+
+        let pos = 0;
+        for (const chunk of noteBufChunks) {
+            for (let i=0; i<chunk.data.length; i++) {
+                const type = parseInt(chunk.data[i]);
+                const t = curTime + mDur * (pos / Math.max(1, totalLen));
+                if (type>=1 && type<=9 && type!==8) {
+                    const req = [7,9].includes(type) ? (balloonsFull[balloonIdx++]||5) : 0;
+                    const n = {time:t, type, scroll:chunk.scroll, bpm:chunk.bpm,
+                               hit:false, fin:false, endTime:t, req, curH:0, lastA:t};
                     notes.push(n);
-                    if ([5, 6, 7, 9].includes(type)) rollStack.push(n);
-                } else if (type === 8) {
-                    rollStack.forEach(r => r.endTime = noteTime);
-                    rollStack = [];
+                    if ([5,6,7,9].includes(type)) rollStack.push(n);
+                    if (type>=1 && type<=4) totalNotes++;
+                } else if (type===8) {
+                    rollStack.forEach(r=>r.endTime=t);
+                    rollStack=[];
                 }
+                pos++;
             }
         }
-        if (barlineOn) bars.push({ time: curTime + mDur, scroll, bpm });
+
+        if (barlineOn) bars.push({time:curTime+mDur, scroll, bpm, branchStart:false});
         curTime += mDur;
+        noteBufChunks = [];
+        currentChunk = null;
+        // 次小節の開始BPM・拍子を現在値で更新
+        measureStartBpm = bpm;
+        measureStartMeasure = measure;
     }
 
-    for (const l of flatLines) {
-        const u = l.toUpperCase().trim();
-        if (u === '#START') { started = true; continue; }
-        if (u === '#END')   { started = false; noteBuf = ''; continue; }
-        if (!started) continue;
-
-        if (u.startsWith('#')) {
-            // 分岐マーカー処理
-            if (u.startsWith('##BRANCH_START')) {
-                const key = l.trim().split(' ')[1];
-                branchTimeline.push({ branch: key, startTime: curTime, endTime: Infinity });
-                continue;
+    for (const item of flatLines) {
+        // マーカーオブジェクト処理
+        if (typeof item === 'object') {
+            if (item._bStart) {
+                if (noteBufChunks.some(c=>c.data.length>0)) flushMeasure();
+                // 直前の小節線を黄色にする
+                if (bars.length>0) bars[bars.length-1].branchStart = true;
+                branchTimeline.push({branch:item.branch, startTime:curTime, endTime:Infinity});
+            } else if (item._bEnd) {
+                if (noteBufChunks.some(c=>c.data.length>0)) flushMeasure();
+                const last = branchTimeline[branchTimeline.length-1];
+                if (last && last.endTime===Infinity) last.endTime = curTime;
             }
-            if (u.startsWith('##BRANCH_END')) {
-                const last = branchTimeline[branchTimeline.length - 1];
-                if (last && last.endTime === Infinity) last.endTime = curTime;
-                continue;
-            }
-            // コマンドはバッファ中でも即時適用（小節内BPM変化は近似）
-            const parts = l.trim().split(/\s+/);
-            const cmd = parts[0].toUpperCase();
-            if (cmd === '#BPMCHANGE') bpm = parseFloat(parts[1]) || bpm;
-            if (cmd === '#SCROLL')    scroll = parseFloat(parts[1]) || scroll;
-            if (cmd === '#MEASURE') {
-                const m = parts[1]?.split('/');
-                if (m?.[1]) measure = parseFloat(m[0]) / parseFloat(m[1]);
-            }
-            if (u === '#BARLINEOFF') barlineOn = false;
-            if (u === '#BARLINEON')  barlineOn = true;
             continue;
         }
 
-        // 音符行: コンマで小節区切り
-        // 例: "1020,1010," → ['1020','1010','']
-        // 例: "1020"       → ['1020'] コンマなし = バッファに積む
+        const l = item;
+        const u = l.toUpperCase().trim();
+        if (u==='#START') { started=true; continue; }
+        if (u==='#END')   { started=false; noteBufChunks=[]; currentChunk=null; continue; }
+        if (!started) continue;
+
+        if (u.startsWith('#')) {
+            const parts = l.trim().split(/\s+/);
+            const cmd = parts[0].toUpperCase();
+            if (cmd==='#BPMCHANGE') { bpm=parseFloat(parts[1])||bpm; currentChunk=null; }
+            if (cmd==='#SCROLL')    { scroll=parseFloat(parts[1])||scroll; currentChunk=null; }
+            if (cmd==='#MEASURE') {
+                const m = parts[1]?.split('/');
+                if (m?.[1]) measure=parseFloat(m[0])/parseFloat(m[1]);
+            }
+            if (u==='#BARLINEOFF') barlineOn=false;
+            if (u==='#BARLINEON')  barlineOn=true;
+            continue;
+        }
+
         if (/[0-9,]/.test(l)) {
-            const raw = l.split('//')[0]; // コメント除去済みのはずだが念のため
-            const segs = raw.split(',');
-            for (let si = 0; si < segs.length; si++) {
-                const seg = segs[si].replace(/\s+/g, '');
-                if (si < segs.length - 1) {
-                    // コンマあり → バッファに追加してflush
-                    noteBuf += seg;
+            const segs = l.split(',');
+            for (let si=0; si<segs.length; si++) {
+                const seg = segs[si].replace(/\s+/g,'');
+                if (si < segs.length-1) {
+                    if (seg.length>0) getOrNewChunk().data += seg;
                     flushMeasure();
                 } else {
-                    // 最後のセグ（コンマなし or 末尾空文字）
-                    if (seg.length > 0) noteBuf += seg;
-                    // コンマで終わる行の場合 segs最後は '' なのでflushは上で済んでる
+                    if (seg.length>0) getOrNewChunk().data += seg;
                 }
             }
         }
     }
-    // 残バッファがあればflush（末尾コンマなしの場合）
-    if (noteBuf.replace(/\s+/g,'').length > 0) flushMeasure();
+    if (noteBufChunks.some(c=>c.data.length>0)) flushMeasure();
 
-    if (!hasBranch) {
-        document.getElementById('branch-badge').className = 'branch-badge';
-    }
+    if (!hasBranch) document.getElementById('branch-badge').className='branch-badge';
     document.getElementById('status-bar').textContent =
-        `Notes: ${notes.length} | BPM: ${c.bpm} | Branch: ${hasBranch ? 'あり' : 'なし'}`;
+        `Notes: ${notes.length} | BPM: ${c.bpm} | Branch: ${hasBranch?'あり':'なし'}`;
 }
 
 // =========================================================
-// 描画速度計算
+// ノルマゲージ描画
+// normagauge.png: 4行、各行58px、間隔34px
+//   Row0: y=32~87   (暗い赤)
+//   Row1: y=121~178 (明るい赤)
+//   Row2: y=213~270 (赤〜黄)
+//   Row3: y=304~361 (レインボー)
+// 横幅: 5663px（実質）、左からゲージ値でクリップ
+// ゲージ値に応じてRow選択:
+//   0.0~0.25 → Row0, 0.25~0.5 → Row1, 0.5~0.75 → Row2, 0.75~1.0 → Row3
 // =========================================================
-// 実際の移動速度 = BASE_PX * scroll * (bpm / baseBpm)
-// baseBpmはコースのbpm（グローバルBPM）
-function getPixelsPerSec(n) {
-    const base = currentCourse ? currentCourse.bpm : 120;
-    return BASE_PX * n.scroll * (n.bpm / base);
-}
-function getBarPxPerSec(b) {
-    const base = currentCourse ? currentCourse.bpm : 120;
-    return BASE_PX * b.scroll * (b.bpm / base);
+const GAUGE_ROWS = [
+    {sy:32,  sh:56},
+    {sy:121, sh:58},
+    {sy:213, sh:58},
+    {sy:304, sh:58},
+];
+const GAUGE_IMG_W = 5663; // 有効横幅
+
+function drawGauge(W) {
+    if (!gaugeImg.complete || gaugeImg.naturalWidth===0) return;
+
+    const GH = 28;
+    const GY = Y_CENTER - 40 - GH - 2; // レーン背景の上
+    const GX = TARGET_X - 10;
+    const GW = W - GX - 10;
+
+    // 背景（黒）
+    ctx.fillStyle = '#000';
+    ctx.fillRect(GX, GY, GW, GH);
+
+    if (gaugeValue > 0) {
+        // ゲージ値に応じたRow選択
+        const rowIdx = Math.min(3, Math.floor(gaugeValue * 4));
+        const row = GAUGE_ROWS[rowIdx];
+        const fillW = GW * gaugeValue;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(GX, GY, fillW, GH);
+        ctx.clip();
+        // 画像の有効幅(GAUGE_IMG_W)をGW全体にマッピングして描画
+        ctx.drawImage(gaugeImg,
+            0, row.sy, GAUGE_IMG_W, row.sh,
+            GX, GY, GW, GH);
+        ctx.restore();
+    }
+
+    // 枠線
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(GX, GY, GW, GH);
+
+    // ノルマライン（80%）
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    const nx = GX + GW * 0.8;
+    ctx.beginPath(); ctx.moveTo(nx, GY-3); ctx.lineTo(nx, GY+GH+3); ctx.stroke();
+    // ラベル
+    ctx.fillStyle='#aaa'; ctx.font='10px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('ノルマ', nx, GY-5);
 }
 
 // =========================================================
 // メインループ
 // =========================================================
 function update() {
-    const dpr = window.devicePixelRatio || 1;
-    const W = canvas.width / dpr;
-    const H = 160;
+    const dpr=window.devicePixelRatio||1;
+    const W=canvas.width/dpr, H=CANVAS_H;
 
-    ctx.fillStyle = "#1a1a1a";
-    ctx.fillRect(0, 0, W, H);
-
+    ctx.fillStyle='#1a1a1a'; ctx.fillRect(0,0,W,H);
     if (!currentCourse) { requestAnimationFrame(update); return; }
 
     const currentTime = audio.currentTime;
+    // curTimeはOFFSET未加算、nowもOFFSET未加算で統一
     const now = currentTime + currentCourse.offset;
 
     document.getElementById('time-display').textContent = currentTime.toFixed(2);
-    if (!isNaN(audio.duration))
-        document.getElementById('seek-bar').value = currentTime;
+    if (!isNaN(audio.duration)) document.getElementById('seek-bar').value = currentTime;
 
-    // 演奏レーン背景
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, Y_CENTER - 35, W, 70);
+    // レーン背景
+    ctx.fillStyle='#000';
+    ctx.fillRect(0, Y_CENTER-40, W, 80);
 
-    // 分岐バナー描画（音符より背面）
+    // 分岐バナー
     if (hasBranch) {
-        // 現在時刻以前に開始した分岐の中で最後のものを使う
-        let activeBranch = 'N';
+        // curTimeと同基準のnowでbranchTimelineを検索
+        let activeBranch = branchTimeline[0]?.branch ?? 'N';
         for (const b of branchTimeline) {
             if (now >= b.startTime) activeBranch = b.branch;
         }
-        const img = activeBranch === 'M' ? imgMaster
-                  : activeBranch === 'E' ? imgExpert
-                  : imgNormal;
-        // バッジも同期更新
+        const img = activeBranch==='M' ? imgMaster
+                  : activeBranch==='E' ? imgExpert : imgNormal;
         const badge = document.getElementById('branch-badge');
-        const map = { N: ['normal', '普通'], E: ['expert', '玄人'], M: ['master', '達人'] };
-        const [cls, lbl] = map[activeBranch] || ['normal', '普通'];
-        badge.className = 'branch-badge ' + cls;
+        const map = {N:['normal','普通'], E:['expert','玄人'], M:['master','達人']};
+        const [cls,lbl] = map[activeBranch]??['normal','普通'];
+        badge.className = 'branch-badge '+cls;
         badge.textContent = lbl;
-        if (img.complete && img.naturalWidth > 0) {
-            const ih = 70, iw = img.naturalWidth * (ih / img.naturalHeight);
-            ctx.globalAlpha = 0.35;
-            ctx.drawImage(img, W / 2 - iw / 2, Y_CENTER - 35, iw, ih);
-            ctx.globalAlpha = 1;
+        if (img.complete && img.naturalWidth>0) {
+            const ih=80, iw=img.naturalWidth*(ih/img.naturalHeight);
+            ctx.globalAlpha=0.35;
+            ctx.drawImage(img, W/2-iw/2, Y_CENTER-40, iw, ih);
+            ctx.globalAlpha=1;
         }
     }
 
     // 小節線
     bars.forEach(b => {
-        const pps = getBarPxPerSec(b);
-        const x = TARGET_X + (b.time - now) * pps;
-        if (x > 0 && x < W) {
-            ctx.strokeStyle = "#444"; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(x, Y_CENTER - 35); ctx.lineTo(x, Y_CENTER + 35); ctx.stroke();
+        const pps = BASE_PX*b.scroll*(b.bpm/currentCourse.bpm);
+        const x = TARGET_X+(b.time-now)*pps;
+        if (x>0 && x<W) {
+            ctx.strokeStyle = b.branchStart ? '#ff0' : '#444';
+            ctx.lineWidth   = b.branchStart ? 3 : 2;
+            ctx.beginPath(); ctx.moveTo(x,Y_CENTER-40); ctx.lineTo(x,Y_CENTER+40); ctx.stroke();
         }
     });
 
     // 判定枠
-    const sj = SPRITES.judge;
-    ctx.drawImage(notesImg, sj.x, 0, sj.w, 150,
-        TARGET_X - (sj.w * SCALE) / 2, Y_CENTER - 75 * SCALE, sj.w * SCALE, 150 * SCALE);
+    const sj=SPRITES.judge;
+    ctx.drawImage(notesImg, sj.x,0,sj.w,150,
+        TARGET_X-(sj.w*SCALE)/2, Y_CENTER-75*SCALE, sj.w*SCALE, 150*SCALE);
 
     const isAuto = document.getElementById('auto-play').checked;
 
     notes.forEach(n => {
-        const pps = getPixelsPerSec(n);
-        const x    = TARGET_X + (n.time    - now) * pps;
-        const xEnd = TARGET_X + (n.endTime - now) * pps;
+        const pps  = BASE_PX*n.scroll*(n.bpm/currentCourse.bpm);
+        const x    = TARGET_X+(n.time-now)*pps;
+        const xEnd = TARGET_X+(n.endTime-now)*pps;
 
-        // AUTO判定
         if (isAuto && !audio.paused) {
-            if (!n.hit && n.type <= 4 && now >= n.time) {
-                n.hit = true;
-                playSE([1, 3].includes(n.type) ? 'dong' : 'ka');
-                effects.push({ t: "良", time: Date.now() });
+            if (!n.hit && n.type<=4 && now>=n.time) {
+                n.hit=true;
+                playSE([1,3].includes(n.type)?'dong':'ka');
+                effects.push({t:'良', time:Date.now()});
+                hitNotes++;
+                gaugeValue = Math.min(1, hitNotes/Math.max(1,totalNotes));
             }
-            if ([5, 6, 7, 9].includes(n.type) && now >= n.time && now < n.endTime && !n.fin) {
-                const interval = 1 / 120; // 秒速120打
-                if (now >= n.lastA + interval) {
-                    playSE('dong'); n.curH++; n.lastA = now;
-                    rollTotalHits++;
-                    rollCurrentHits++;
-                    rollLastHitTime = now;
-                    if ([7, 9].includes(n.type) && n.curH >= n.req) {
-                        n.fin = true; playSE('balloon');
-                        rollEndedAt = now;
+            if ([5,6,7,9].includes(n.type) && now>=n.time && now<n.endTime && !n.fin) {
+                if (now >= n.lastA+1/120) {
+                    playSE('dong'); n.curH++; n.lastA=now;
+                    rollTotalHits++; rollCurrentHits++;
+                    if ([7,9].includes(n.type) && n.curH>=n.req) {
+                        n.fin=true; playSE('balloon'); rollEndedAt=now;
                     }
                 }
-            } else if ([5, 6].includes(n.type) && now >= n.endTime && !n.fin) {
-                n.fin = true;
-                rollEndedAt = now;
+            } else if ([5,6].includes(n.type) && now>=n.endTime && !n.fin) {
+                n.fin=true; rollEndedAt=now;
             }
         }
 
-        // 描画カリング
-        if (xEnd < -200 || x > W + 200) return;
-        if (n.fin && [7, 9].includes(n.type)) return;
+        if (xEnd<-200 || x>W+200) return;
+        if (n.fin && [7,9].includes(n.type)) return;
+        const s=SPRITES[n.type]; if (!s) return;
 
-        const s = SPRITES[n.type];
-        if (!s) return;
-
-        // ロール/風船胴体
-        if ([5, 6].includes(n.type)) {
-            const bS = SPRITES[n.type === 5 ? 55 : 66];
-            const tS = SPRITES[8];
-            const drawX0 = Math.max(x, -bS.w * SCALE);
-            for (let bx = drawX0; bx < xEnd; bx += bS.w * SCALE) {
-                const tw = Math.min(bS.w, (xEnd - bx) / SCALE);
-                ctx.drawImage(notesImg, bS.x, 0, tw, 150, bx, Y_CENTER - 75 * SCALE, tw * SCALE, 150 * SCALE);
+        if ([5,6].includes(n.type)) {
+            const bS=SPRITES[n.type===5?55:66], tS=SPRITES[8];
+            for (let bx=Math.max(x,-bS.w*SCALE); bx<xEnd; bx+=bS.w*SCALE) {
+                const tw=Math.min(bS.w,(xEnd-bx)/SCALE);
+                ctx.drawImage(notesImg,bS.x,0,tw,150,bx,Y_CENTER-75*SCALE,tw*SCALE,150*SCALE);
             }
-            ctx.drawImage(notesImg, tS.x, 0, tS.w, 150,
-                xEnd - (tS.w * SCALE) / 2, Y_CENTER - 75 * SCALE, tS.w * SCALE, 150 * SCALE);
+            ctx.drawImage(notesImg,tS.x,0,tS.w,150,
+                xEnd-(tS.w*SCALE)/2,Y_CENTER-75*SCALE,tS.w*SCALE,150*SCALE);
         }
-
-        // ノート本体
-        if (!n.hit || n.type > 4) {
-            const isHeld = [7, 9, 5, 6].includes(n.type) && now >= n.time && now < n.endTime;
-            const drawX = isHeld ? TARGET_X : x;
-            ctx.drawImage(notesImg, s.x, 0, s.w, 150,
-                drawX - (s.w * SCALE) / 2, Y_CENTER - 75 * SCALE, s.w * SCALE, 150 * SCALE);
-
-            // 風船カウンター
-            if ([7, 9].includes(n.type) && now >= n.time) {
-                ctx.fillStyle = "#fff";
-                ctx.font = "bold 24px Arial";
-                ctx.textAlign = "center";
-                ctx.fillText(Math.max(0, n.req - n.curH), drawX, Y_CENTER + 60);
+        if (!n.hit || n.type>4) {
+            const isHeld=[5,6,7,9].includes(n.type)&&now>=n.time&&now<n.endTime;
+            const drawX=isHeld?TARGET_X:x;
+            ctx.drawImage(notesImg,s.x,0,s.w,150,
+                drawX-(s.w*SCALE)/2,Y_CENTER-75*SCALE,s.w*SCALE,150*SCALE);
+            if ([7,9].includes(n.type) && now>=n.time) {
+                ctx.fillStyle='#fff'; ctx.font='bold 24px Arial'; ctx.textAlign='center';
+                ctx.fillText(Math.max(0,n.req-n.curH), drawX, Y_CENTER+55);
             }
         }
     });
 
     // エフェクト
-    effects = effects.filter(e => {
-        const age = Date.now() - e.time;
-        if (age < 300) {
-            ctx.globalAlpha = 1 - (age / 300);
-            ctx.fillStyle = "#ff0";
-            ctx.font = "bold 30px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText(e.t, TARGET_X, Y_CENTER - 45);
-            ctx.globalAlpha = 1;
-            return true;
+    effects=effects.filter(e=>{
+        const age=Date.now()-e.time;
+        if (age<300){
+            ctx.globalAlpha=1-age/300;
+            ctx.fillStyle='#ff0'; ctx.font='bold 30px Arial'; ctx.textAlign='center';
+            ctx.fillText(e.t, TARGET_X, Y_CENTER-50);
+            ctx.globalAlpha=1; return true;
         }
         return false;
     });
 
-    // 連打カウント表示
-    // 累計（最初の連打から常時）
-    if (rollTotalHits > 0) {
-        ctx.textAlign = 'right';
-        ctx.font = 'bold 18px monospace';
-        ctx.fillStyle = '#0ff';
-        ctx.fillText(`累計 ${rollTotalHits}`, W - 10, Y_CENTER - 15);
+    // 連打カウント
+    if (rollTotalHits>0){
+        ctx.textAlign='right'; ctx.font='bold 16px monospace';
+        ctx.fillStyle='#0ff';
+        ctx.fillText(`累計 ${rollTotalHits}`, W-10, Y_CENTER-22);
     }
-    // 現在の連打数（終了から1秒で消える）
-    const rollAge = now - rollEndedAt;
-    if (rollCurrentHits > 0 && rollAge < 1.0) {
-        const alpha = rollAge < 0.7 ? 1 : 1 - (rollAge - 0.7) / 0.3;
-        ctx.globalAlpha = alpha;
-        ctx.textAlign = 'right';
-        ctx.font = 'bold 28px monospace';
-        ctx.fillStyle = '#ff0';
-        ctx.fillText(`${rollCurrentHits}打`, W - 10, Y_CENTER + 15);
-        ctx.globalAlpha = 1;
+    const rollAge=now-rollEndedAt;
+    if (rollCurrentHits>0 && rollAge<1.0){
+        ctx.globalAlpha=rollAge<0.7?1:1-(rollAge-0.7)/0.3;
+        ctx.textAlign='right'; ctx.font='bold 26px monospace';
+        ctx.fillStyle='#ff0';
+        ctx.fillText(`${rollCurrentHits}打`, W-10, Y_CENTER+8);
+        ctx.globalAlpha=1;
     }
-    // 連打終了後1秒経過でrollCurrentHitsリセット
-    if (rollAge >= 1.0 && rollCurrentHits > 0) {
-        rollCurrentHits = 0;
-    }
+    if (rollAge>=1.0 && rollCurrentHits>0) rollCurrentHits=0;
+
+    // ノルマゲージ
+    drawGauge(W);
 
     requestAnimationFrame(update);
 }
 update();
 
 // =========================================================
-// UI イベント
+// UIイベント
 // =========================================================
-document.getElementById('play-btn').onclick = () => {
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    audio.paused ? audio.play() : audio.pause();
+document.getElementById('play-btn').onclick=()=>{
+    if (audioCtx.state==='suspended') audioCtx.resume();
+    audio.paused?audio.play():audio.pause();
 };
-
-document.getElementById('apply-btn').onclick = () => {
-    parseTJA(document.getElementById('tja-editor').value);
+document.getElementById('apply-btn').onclick=()=>parseTJA(document.getElementById('tja-editor').value);
+document.getElementById('speed-num').onchange=e=>{
+    audio.playbackRate=parseFloat(e.target.value)||1.0;
+    audio.preservesPitch=true;
 };
+document.getElementById('course-select').onchange=e=>loadCourse(e.target.value);
 
-document.getElementById('speed-num').onchange = (e) => {
-    playbackRate = parseFloat(e.target.value) || 1.0;
-    audio.playbackRate = playbackRate;
-    audio.preservesPitch = true;
-};
-
-document.getElementById('course-select').onchange = (e) => {
-    loadCourse(e.target.value);
-};
-
-// ZIP / TJA 読込
-document.getElementById('f-combined').onchange = async (e) => {
-    const f = e.target.files[0]; if (!f) return;
+document.getElementById('f-combined').onchange=async e=>{
+    const f=e.target.files[0]; if (!f) return;
     if (f.name.endsWith('.zip')) {
-        const zip = await JSZip.loadAsync(f);
+        const zip=await JSZip.loadAsync(f);
         for (const p in zip.files) {
-            if (p.match(/\.tja$/i)) {
-                const buf = await zip.files[p].async("uint8array");
+            if (p.match(/\.tja$/i)){
+                const buf=await zip.files[p].async('uint8array');
                 let txt;
-                try { txt = new TextDecoder("shift_jis").decode(buf); }
-                catch { txt = new TextDecoder("utf-8").decode(buf); }
-                document.getElementById('tja-editor').value = txt;
+                try{txt=new TextDecoder('shift_jis').decode(buf);}
+                catch{txt=new TextDecoder('utf-8').decode(buf);}
+                document.getElementById('tja-editor').value=txt;
                 parseTJA(txt);
             }
-            if (p.match(/\.(ogg|wav|mp3)$/i)) {
-                audio.src = URL.createObjectURL(
-                    new Blob([await zip.files[p].async("arraybuffer")])
-                );
-            }
+            if (p.match(/\.(ogg|wav|mp3)$/i))
+                audio.src=URL.createObjectURL(new Blob([await zip.files[p].async('arraybuffer')]));
         }
     } else {
-        const r = new FileReader();
-        r.onload = () => {
-            document.getElementById('tja-editor').value = r.result;
-            parseTJA(r.result);
-        };
-        r.readAsText(f, "shift_jis");
+        const r=new FileReader();
+        r.onload=()=>{document.getElementById('tja-editor').value=r.result;parseTJA(r.result);};
+        r.readAsText(f,'shift_jis');
     }
-    e.target.value = '';
+    e.target.value='';
+};
+document.getElementById('f-audio-only').onchange=e=>{
+    if (e.target.files[0]) audio.src=URL.createObjectURL(e.target.files[0]);
+    e.target.value='';
+};
+audio.onloadedmetadata=()=>{document.getElementById('seek-bar').max=audio.duration;};
+document.getElementById('seek-bar').oninput=e=>{
+    audio.currentTime=parseFloat(e.target.value);
+    notes.forEach(n=>{n.hit=n.fin=false;n.curH=0;n.lastA=n.time;});
+    hitNotes=0; gaugeValue=0;
+    rollTotalHits=0; rollCurrentHits=0; rollEndedAt=-999;
 };
 
-document.getElementById('f-audio-only').onchange = (e) => {
-    if (e.target.files[0]) audio.src = URL.createObjectURL(e.target.files[0]);
-    e.target.value = '';
-};
+// =========================================================
+// キーボード・タタコン入力（AUTOオフ時）
+// =========================================================
+// キーボード: f/j=ドン(中央)、d/k=カッ(縁)
+// タタコン: Gamepad API で左ドン=B9/B11、右ドン=B10/B12、左カッ=B13、右カッ=B14 等
+//   実際のタタコン(HORIPAD)は axes や button番号がデバイス依存なので
+//   「いずれかのボタンが押された」を dong/ka に割り当てる簡易実装
+//   タタコンの一般的なマッピング:
+//     左ドン=btn4(L1相当), 右ドン=btn5(R1相当)
+//     左カッ=btn6(L2相当), 右カッ=btn7(R2相当)
+//     ※Wiiタタコンアダプタ等では異なる
 
-audio.onloadedmetadata = () => {
-    document.getElementById('seek-bar').max = audio.duration;
-};
+function judgeHit(isDon) {
+    if (document.getElementById('auto-play').checked) return;
+    if (audio.paused) return;
+    if (audioCtx.state==='suspended') audioCtx.resume();
 
-document.getElementById('seek-bar').oninput = (e) => {
-    audio.currentTime = parseFloat(e.target.value);
-    notes.forEach(n => { n.hit = n.fin = false; n.curH = 0; n.lastA = n.time; });
-    rollTotalHits = 0; rollCurrentHits = 0; rollEndedAt = -999; rollLastHitTime = -1;
-};
+    const now = audio.currentTime + (currentCourse?.offset ?? 0);
+    const WIN = 0.075; // ±75ms判定窓
+
+    playSE(isDon ? 'dong' : 'ka');
+
+    // 連打・風船・ロール中のノートを優先処理
+    for (const n of notes) {
+        if (n.fin) continue;
+        if ([5,6,7,9].includes(n.type) && now>=n.time && now<n.endTime) {
+            if (!isDon) break; // 連打はドンのみ
+            n.curH++;
+            rollTotalHits++; rollCurrentHits++;
+            if ([7,9].includes(n.type) && n.curH>=n.req) {
+                n.fin=true; playSE('balloon'); rollEndedAt=now;
+            }
+            return;
+        }
+    }
+
+    // 通常ノート判定（最も近い未ヒットノート）
+    let best=null, bestDist=WIN;
+    for (const n of notes) {
+        if (n.hit || n.type>4) continue;
+        const dist=Math.abs(n.time-now);
+        if (dist<bestDist) {
+            // ドン(1,3)かカッ(2,4)か確認
+            const needDon=[1,3].includes(n.type);
+            if (isDon===needDon) { best=n; bestDist=dist; }
+        }
+    }
+    if (best) {
+        best.hit=true;
+        hitNotes++;
+        gaugeValue=Math.min(1,hitNotes/Math.max(1,totalNotes));
+        effects.push({t:'良', time:Date.now()});
+    }
+}
+
+// キーボード
+const dongKeys = new Set(['f','j','F','J']);
+const kaKeys   = new Set(['d','k','D','K']);
+document.addEventListener('keydown', e => {
+    if (e.repeat) return;
+    if (dongKeys.has(e.key)) judgeHit(true);
+    else if (kaKeys.has(e.key)) judgeHit(false);
+});
+
+// タタコン (Gamepad API)
+// ドンボタン: 0,1,2,3 / カッボタン: 4,5,6,7 は機種依存なので
+// 押されたボタンインデックスで判定する
+// タタコンは一般的に 軸(axes)で判定するものもある
+const gpPrev = {}; // gamepadIndex → {buttons: bool[]}
+
+function pollGamepad() {
+    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    for (const gp of gamepads) {
+        if (!gp) continue;
+        if (!gpPrev[gp.index]) gpPrev[gp.index] = { buttons: new Array(gp.buttons.length).fill(false) };
+        const prev = gpPrev[gp.index].buttons;
+        gp.buttons.forEach((btn, i) => {
+            const pressed = btn.pressed || btn.value > 0.5;
+            if (pressed && !prev[i]) {
+                // タタコン標準マッピング（HORIPAD/Mayflash）
+                // ドン: btn0(×/A), btn1(○/B), btn2(□/X), btn3(△/Y)
+                // カッ: btn4(L1), btn5(R1), btn6(L2), btn7(R2)
+                // ※実際のタタコンはドン=軸変化の場合もあるが、ボタンで拾う方が汎用的
+                const isDon = i <= 3;
+                judgeHit(isDon);
+            }
+            prev[i] = pressed;
+        });
+        // axes (タタコンによってはアナログ軸)
+        gp.axes.forEach((v, i) => {
+            const key = `axis${i}`;
+            const prevV = gpPrev[gp.index][key] ?? 0;
+            if (Math.abs(v) > 0.5 && Math.abs(prevV) <= 0.5) {
+                judgeHit(i % 2 === 0); // 偶数軸=ドン、奇数軸=カッ（簡易）
+            }
+            gpPrev[gp.index][key] = v;
+        });
+    }
+    requestAnimationFrame(pollGamepad);
+}
+pollGamepad();
 </script>
 </body>
 </html>
