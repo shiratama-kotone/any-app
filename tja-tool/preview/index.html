@@ -5,23 +5,17 @@
 <title>TJA Previewer</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
-    @font-face {
-  font-family: 'TaikoFont';
-  /* GitHubのURLをjsDelivr形式に変換したもの */
-  src: url('https://cdn.jsdelivr.net/gh/shiratama-kotone/any-app@main/assets/taikofont.otf') format('opentype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-body{font-family:'TaikoFont';background:#1a1a1a;color:#fff;padding:20px;margin:0}
+@font-face{font-family:'TaikoFont';src:url('https://cdn.jsdelivr.net/gh/shiratama-kotone/any-app@main/assets/taikofont.otf') format('opentype')}
+*{font-family:'TaikoFont',sans-serif}
+body{background:#1a1a1a;color:#fff;padding:20px;margin:0}
 .container{max-width:950px;margin:0 auto;background:#2d2d2d;padding:20px;border-radius:12px}
-#tja-editor{width:100%;height:80px;background:#000;color:#0f0;border:1px solid #555;font-family:monospace;padding:10px;margin-bottom:10px;box-sizing:border-box}
+#tja-editor{width:100%;height:80px;background:#000;color:#0f0;border:1px solid #555;padding:10px;margin-bottom:10px;box-sizing:border-box}
 .controls{display:flex;align-items:center;gap:15px;background:#333;padding:15px;border-radius:8px;margin-bottom:10px;flex-wrap:wrap}
 button{background:#00b0ff;color:#fff;border:none;padding:10px 15px;border-radius:4px;cursor:pointer;font-weight:bold}
 .game-screen{width:100%;background:#000;border:4px solid #444;border-radius:10px;overflow:hidden;position:relative}
 canvas{width:100%;display:block}
 .speed-ctrl{display:flex;align-items:center;gap:5px;background:#444;padding:5px 10px;border-radius:4px}
-#status-bar{font-size:12px;color:#0f0;margin-top:8px;font-family:monospace;background:#000;padding:8px}
+#status-bar{font-size:12px;color:#0f0;margin-top:8px;background:#000;padding:8px}
 .branch-badge{position:absolute;top:4px;right:8px;font-size:11px;font-weight:bold;padding:2px 8px;border-radius:4px;pointer-events:none;display:none}
 .branch-badge.normal{background:#4a7;color:#fff;display:block}
 .branch-badge.expert{background:#d4a;color:#fff;display:block}
@@ -56,7 +50,6 @@ canvas{width:100%;display:block}
 const canvas=document.getElementById('game-canvas'), ctx=canvas.getContext('2d');
 
 const notesImg=new Image(); notesImg.src="https://raw.githubusercontent.com/shiratama-kotone/any-app/main/assets/taiko/notes.png";
-const gaugeImg=new Image(); gaugeImg.src="https://github.com/shiratama-kotone/any-app/blob/main/assets/taiko/normagauge.png?raw=true";
 const imgNormal=new Image(); imgNormal.src="https://github.com/shiratama-kotone/any-app/blob/main/assets/taiko/%E6%99%AE%E9%80%9A.png?raw=true";
 const imgExpert=new Image(); imgExpert.src="https://github.com/shiratama-kotone/any-app/blob/main/assets/taiko/%E7%8E%84%E4%BA%BA.png?raw=true";
 const imgMaster=new Image(); imgMaster.src="https://github.com/shiratama-kotone/any-app/blob/main/assets/taiko/%E9%81%94%E4%BA%BA.png?raw=true";
@@ -429,104 +422,100 @@ function loadCourse(label){
 }
 
 // =========================================================
-// 魂ゲージ描画（スクリプト描画）
+// 魂ゲージ描画（50本ランプ方式、スクリプト描画）
+// 構造: [魂アイコン] [50本のランプ] [クリアライン] [魂ライン]
+// ランプは左から右に点灯、色は段階的に変化
 // =========================================================
-// ゲージ構造:
-//   左端: 小さいランプ群 → 中央: バー → 右端: 魂(炎)
-// クリアライン・魂ラインは gaugeVal の比率で表示
-const GAUGE_ROWS=[{sy:32,sh:56},{sy:121,sh:58},{sy:213,sh:58},{sy:304,sh:58}];
-const GAUGE_IMG_W=5663;
-
 function drawSoulGauge(W){
-  const GX=TX-10, GW=W-GX-10, GH=26;
-  const GY=YC-44-GH-2;
+  const LAMP_N=50;
+  const GH=20; // ランプ高さ
+  // 右端に魂アイコン(24px)、左端にラベル余白
+  const SOUL_W=28, GAP=2;
+  const GX=TX-10;
+  const GW=W-GX-SOUL_W-12;
+  const GY=YC-44-GH-4;
+  const lampW=(GW-(LAMP_N-1)*GAP)/LAMP_N;
 
   // 背景
-  ctx.fillStyle='#111'; ctx.fillRect(GX-2,GY-2,GW+4,GH+4);
-  ctx.fillStyle='#222'; ctx.fillRect(GX,GY,GW,GH);
+  ctx.fillStyle='#111'; ctx.fillRect(GX-2,GY-2,GW+SOUL_W+14,GH+4);
 
-  // ゲージ本体（ノルマゲージ画像を使用）
-  if(gaugeVal>0 && gaugeImg.complete && gaugeImg.naturalWidth>0){
-    const rowIdx=Math.min(3,Math.floor(gaugeVal*4));
-    const row=GAUGE_ROWS[rowIdx];
-    const fillW=GW*gaugeVal;
-    ctx.save(); ctx.beginPath(); ctx.rect(GX,GY,fillW,GH); ctx.clip();
-    ctx.drawImage(gaugeImg,0,row.sy,GAUGE_IMG_W,row.sh,GX,GY,GW,GH);
-    ctx.restore();
+  // クリアライン・魂ラインの位置（ランプ本数で決まる）
+  const clPct={ONI:0.596,HARD:0.50,NORMAL:0.50,EASY:0.44}[courseType]??0.55;
+  const slPct={ONI:0.745,HARD:0.72,NORMAL:0.75,EASY:0.73}[courseType]??0.75;
+  const clLamp=Math.round(clPct*LAMP_N); // クリアライン到達ランプ番号
+  const slLamp=Math.round(slPct*LAMP_N); // 魂ライン到達ランプ番号
+  const litN=Math.round(gaugeVal*LAMP_N); // 点灯本数
+
+  for(let i=0;i<LAMP_N;i++){
+    const lx=GX+i*(lampW+GAP);
+    const lit=i<litN;
+    // 色: 0〜clLamp=赤系、clLamp〜slLamp=黄系、slLamp〜=虹
+    let color;
+    if(!lit){
+      color='#2a2a2a';
+    } else if(i<clLamp){
+      // 赤→オレンジ
+      const t=i/Math.max(1,clLamp-1);
+      const r=255, g=Math.round(80+t*80), b=0;
+      color=`rgb(${r},${g},${b})`;
+    } else if(i<slLamp){
+      // 黄→黄緑
+      const t=(i-clLamp)/Math.max(1,slLamp-clLamp-1);
+      const r=Math.round(255-t*100), g=255, b=Math.round(t*60);
+      color=`rgb(${r},${g},${b})`;
+    } else {
+      // 虹（シアン→青紫）
+      const t=(i-slLamp)/Math.max(1,LAMP_N-slLamp-1);
+      const hue=180+t*120; // 180(シアン)〜300(紫)
+      color=`hsl(${hue},100%,60%)`;
+    }
+    ctx.fillStyle=color;
+    ctx.fillRect(lx,GY,lampW,GH);
+
+    // クリアライン・魂ラインに縦線
+    if(i===clLamp-1){
+      ctx.strokeStyle='#fff'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(lx+lampW+GAP/2,GY-4); ctx.lineTo(lx+lampW+GAP/2,GY+GH+4); ctx.stroke();
+    }
+    if(i===slLamp-1){
+      ctx.strokeStyle='#ffd700'; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.moveTo(lx+lampW+GAP/2,GY-5); ctx.lineTo(lx+lampW+GAP/2,GY+GH+5); ctx.stroke();
+    }
   }
 
-  // クリアライン（難易度によって位置が変わる）
-  // おに約60%, むずかしい約50%, ふつう約50%, かんたん約44%
-  const clPct={ONI:0.60,HARD:0.50,NORMAL:0.50,EASY:0.44}[courseType]??0.55;
-  const slPct={ONI:0.75,HARD:0.72,NORMAL:0.75,EASY:0.73}[courseType]??0.75;
-
-  // 魂ライン（金色の縦線）
-  const soulX=GX+GW*slPct;
-  ctx.strokeStyle='#ffd700'; ctx.lineWidth=2.5;
-  ctx.beginPath(); ctx.moveTo(soulX,GY-4); ctx.lineTo(soulX,GY+GH+4); ctx.stroke();
-
-  // クリアライン（白の縦線）
-  const clX=GX+GW*clPct;
-  ctx.strokeStyle='#fff'; ctx.lineWidth=2;
-  ctx.beginPath(); ctx.moveTo(clX,GY-4); ctx.lineTo(clX,GY+GH+4); ctx.stroke();
-
-  // ランプ（左端に5個の小さい四角）
-  const lampN=5;
-  for(let i=0;i<lampN;i++){
-    const lx=GX-14-(lampN-1-i)*10, lw=8;
-    const lit=gaugeVal>=(i+1)/lampN;
-    ctx.fillStyle=lit?'#ff8c00':'#333';
-    ctx.fillRect(lx,GY+3,lw,GH-6);
-    ctx.strokeStyle='#666'; ctx.lineWidth=1;
-    ctx.strokeRect(lx,GY+3,lw,GH-6);
-  }
-
-  // 右端: 魂アイコン（炎）
-  const fx=GX+GW+8, fy=GY+GH/2;
-  const lit=gaugeVal>=slPct;
-  // 炎シルエット
-  ctx.save();
-  ctx.translate(fx,fy);
-  const flameGrad=ctx.createRadialGradient(0,0,0,0,0,12);
-  if(lit){
-    flameGrad.addColorStop(0,'#fff'); flameGrad.addColorStop(0.3,'#ff0');
-    flameGrad.addColorStop(0.7,'#f80'); flameGrad.addColorStop(1,'rgba(255,60,0,0)');
-  } else {
-    flameGrad.addColorStop(0,'#555'); flameGrad.addColorStop(1,'rgba(0,0,0,0)');
-  }
-  ctx.fillStyle=flameGrad;
-  ctx.beginPath(); ctx.arc(0,0,12,0,Math.PI*2); ctx.fill();
-  // 炎の中心テキスト
-  ctx.fillStyle=lit?'#fff':'#888'; ctx.font='bold 14px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText('魂',0,0);
+  // 魂アイコン（右端）
+  const fx=GX+GW+SOUL_W/2+4, fy=GY+GH/2;
+  const soulLit=gaugeVal>=slPct;
+  ctx.save(); ctx.translate(fx,fy);
+  const fg=ctx.createRadialGradient(0,0,0,0,0,SOUL_W/2);
+  if(soulLit){fg.addColorStop(0,'#fff');fg.addColorStop(0.4,'#ff0');fg.addColorStop(0.8,'#f60');fg.addColorStop(1,'rgba(255,80,0,0)');}
+  else{fg.addColorStop(0,'#444');fg.addColorStop(1,'rgba(0,0,0,0)');}
+  ctx.fillStyle=fg; ctx.beginPath(); ctx.arc(0,0,SOUL_W/2,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=soulLit?'#fff':'#888'; ctx.font=`bold ${GH-4}px TaikoFont,sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('魂',0,0);
   ctx.restore();
 
-  // 枠線
-  ctx.strokeStyle='#666'; ctx.lineWidth=1.5; ctx.strokeRect(GX,GY,GW,GH);
-
-  // クリア/魂ラベル
-  ctx.fillStyle='#aaa'; ctx.font='9px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top';
-  ctx.fillText('CL',clX,GY+GH+2);
-  ctx.fillStyle='#ffd700';
-  ctx.fillText('魂',soulX,GY+GH+2);
+  // ラベル
+  ctx.fillStyle='#aaa'; ctx.font='9px TaikoFont,sans-serif'; ctx.textBaseline='top'; ctx.textAlign='center';
+  const clX=GX+(clLamp-1)*(lampW+GAP)+lampW+GAP/2;
+  const slX=GX+(slLamp-1)*(lampW+GAP)+lampW+GAP/2;
+  ctx.fillStyle='#ccc'; ctx.fillText('CL',clX,GY+GH+2);
+  ctx.fillStyle='#ffd700'; ctx.fillText('魂',slX,GY+GH+2);
 }
 
 // =========================================================
 // スコア表示
 // =========================================================
 function drawScore(W){
-  // 右上にスコア・コンボ・判定内訳を表示
   ctx.textAlign='right'; ctx.textBaseline='top';
-  ctx.font='bold 20px monospace';
+  ctx.font='bold 20px TaikoFont,sans-serif';
   ctx.fillStyle='#fff';
   ctx.fillText(String(score).padStart(8,'0'), W-10, 5);
-  // コンボ
   if(combo>0){
-    ctx.font='bold 28px Arial'; ctx.fillStyle='#ff0'; ctx.textAlign='center';
+    ctx.font='bold 28px TaikoFont,sans-serif'; ctx.fillStyle='#ff0'; ctx.textAlign='center';
     ctx.fillText(`${combo}コンボ`, TX, YC-44);
   }
-  // 判定内訳
-  ctx.font='12px monospace'; ctx.textAlign='left'; ctx.textBaseline='top';
+  ctx.font='12px TaikoFont,sans-serif'; ctx.textAlign='left'; ctx.textBaseline='top';
   ctx.fillStyle='#0f0'; ctx.fillText(`良:${goodCount}`, 5, 5);
   ctx.fillStyle='#ff0'; ctx.fillText(`可:${okCount}`, 5, 20);
   ctx.fillStyle='#f44'; ctx.fillText(`不可:${missCount}`, 5, 35);
@@ -610,12 +599,16 @@ function update(){
         effects.push({t:'良',time:Date.now(),color:'#0f0'});
       }
       if([5,6,7,9].includes(n.type)&&now>=n.time&&now<n.endTime&&!n.fin){
-        if(now>=n.lastA+1/600){
-          playSE('dong'); n.curH++; n.lastA=now;
-          rollTotalHits++; rollCurrentHits++;
-          if([7,9].includes(n.type)&&n.curH>=n.req){
-            n.fin=true; playSE('balloon'); rollEndedAt=now;
+        // FPS非依存: 秒速600打 = 1打あたり1/600秒
+        // audio.currentTimeベースで経過時間を積算
+        const interval=1/600;
+        if(now>=n.lastA+interval){
+          const hits=Math.floor((now-n.lastA)/interval);
+          for(let h=0;h<hits;h++){
+            playSE('dong'); n.curH++; rollTotalHits++; rollCurrentHits++;
+            if([7,9].includes(n.type)&&n.curH>=n.req){n.fin=true;playSE('balloon');rollEndedAt=now;break;}
           }
+          n.lastA+=hits*interval;
         }
       } else if([5,6].includes(n.type)&&now>=n.endTime&&!n.fin){
         n.fin=true; rollEndedAt=now;
@@ -639,7 +632,7 @@ function update(){
       const dx=isHeld?TX:x;
       ctx.drawImage(notesImg,s.x,0,s.w,150,dx-(s.w*SC)/2,YC-75*SC,s.w*SC,150*SC);
       if([7,9].includes(n.type)&&now>=n.time){
-        ctx.fillStyle='#fff'; ctx.font='bold 24px Arial'; ctx.textAlign='center';
+        ctx.fillStyle='#fff'; ctx.font='bold 24px TaikoFont,sans-serif'; ctx.textAlign='center';
         ctx.fillText(Math.max(0,n.req-n.curH),dx,YC+58);
       }
     }
@@ -650,7 +643,7 @@ function update(){
     const age=Date.now()-e.time;
     if(age<300){
       ctx.globalAlpha=1-age/300;
-      ctx.fillStyle=e.color||'#ff0'; ctx.font='bold 28px Arial'; ctx.textAlign='center';
+      ctx.fillStyle=e.color||'#ff0'; ctx.font='bold 28px TaikoFont,sans-serif'; ctx.textAlign='center';
       ctx.fillText(e.t,TX,YC-52); ctx.globalAlpha=1; return true;
     }
     return false;
@@ -658,13 +651,13 @@ function update(){
 
   // 連打カウント
   if(rollTotalHits>0){
-    ctx.textAlign='right'; ctx.font='bold 15px monospace'; ctx.textBaseline='middle';
+    ctx.textAlign='right'; ctx.font='bold 15px TaikoFont,sans-serif'; ctx.textBaseline='middle';
     ctx.fillStyle='#0ff'; ctx.fillText(`累計 ${rollTotalHits}`,W-10,YC-24);
   }
   const rollAge=now-rollEndedAt;
   if(rollCurrentHits>0&&rollAge<1.0){
     ctx.globalAlpha=rollAge<0.7?1:1-(rollAge-0.7)/0.3;
-    ctx.textAlign='right'; ctx.font='bold 24px monospace'; ctx.textBaseline='middle';
+    ctx.textAlign='right'; ctx.font='bold 24px TaikoFont,sans-serif'; ctx.textBaseline='middle';
     ctx.fillStyle='#ff0'; ctx.fillText(`${rollCurrentHits}打`,W-10,YC+6); ctx.globalAlpha=1;
   }
   if(rollAge>=1.0&&rollCurrentHits>0) rollCurrentHits=0;
@@ -718,11 +711,13 @@ function judgeHit(isDon){
   best.hit=true;
   if(bestDist<=GOOD_WIN){
     best.judged='good'; goodCount++; combo++; if(combo>maxCombo)maxCombo=combo;
-    score+=1000; gaugeVal=Math.min(1,gaugeVal+goodAdd);
+    score+=calcNoteScore(combo-1);
+    gaugeVal=Math.min(1,gaugeVal+goodAdd);
     effects.push({t:'良',time:Date.now(),color:'#0f0'});
   } else {
     best.judged='ok'; okCount++; combo=0;
-    score+=500; gaugeVal=Math.min(1,gaugeVal+okAdd);
+    score+=Math.floor(calcNoteScore(0)/2);
+    gaugeVal=Math.min(1,gaugeVal+okAdd);
     effects.push({t:'可',time:Date.now(),color:'#ff0'});
   }
 }
