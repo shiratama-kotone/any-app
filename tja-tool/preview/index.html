@@ -342,7 +342,7 @@ function loadCourse(label){
   }
 
   function flush(){
-    const mDur=(60/measureStartBpm)*4*measureStartMeasure;
+    const mDur=(600/measureStartBpm)*4*measureStartMeasure;
     const totalLen=noteBufChunks.reduce((s,c)=>s+c.data.length,0);
     let pos=0;
     for(const chunk of noteBufChunks){
