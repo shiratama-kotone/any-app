@@ -36,7 +36,37 @@ canvas{width:100%;display:block}
     <button id="play-btn">▶ 再生/停止</button>
     <input type="range" id="seek-bar" value="0" step="0.01" style="flex:1">
     <span id="time-display">0.00</span>
-    <div class="speed-ctrl">速度:<input type="number" id="speed-num" value="1.0" step="0.01" min="0.1" max="5.0" style="width:50px"></div>
+    <div class="speed-ctrl">曲速:<input type="number" id="speed-num" value="1.0" step="0.01" min="0.1" max="5.0" style="width:50px"></div>
+    <div class="speed-ctrl">レーン:
+      <select id="lane-speed">
+        <option value="1.0" selected>×1.0</option>
+        <option value="1.1">×1.1</option>
+        <option value="1.2">×1.2</option>
+        <option value="1.3">×1.3</option>
+        <option value="1.4">×1.4</option>
+        <option value="1.5">×1.5</option>
+        <option value="1.6">×1.6</option>
+        <option value="1.7">×1.7</option>
+        <option value="1.8">×1.8</option>
+        <option value="1.9">×1.9</option>
+        <option value="2.0">×2.0</option>
+        <option value="2.5">×2.5</option>
+        <option value="3.0">×3.0</option>
+        <option value="3.5">×3.5</option>
+        <option value="4.0">×4.0</option>
+      </select>
+    </div>
+    <div class="speed-ctrl" id="roll-speed-ctrl">連打:
+      <select id="roll-speed">
+        <option value="120">120/s</option>
+        <option value="240">240/s</option>
+        <option value="360">360/s</option>
+        <option value="480">480/s</option>
+        <option value="600" selected>600/s</option>
+        <option value="720">720/s</option>
+        <option value="999">999/s</option>
+      </select>
+    </div>
     <select id="course-select"></select>
     <label><input type="checkbox" id="auto-play" checked> AUTO</label>
   </div>
@@ -58,7 +88,9 @@ const SP={1:{x:202,w:78},2:{x:360,w:80},3:{x:495,w:128},4:{x:655,w:128},
           5:{x:838,w:82},55:{x:960,w:160},6:{x:1295,w:125},66:{x:1440,w:160},
           7:{x:1798,w:212},8:{x:1145,w:75},9:{x:2095,w:130},judge:{x:15,w:130}};
 
-const TX=150, YC=110, BPX=400, SC=0.5, CH=250;
+const TX=150, YC=120, BPX=400, SC=0.5, CH=270;
+let laneSpeed=1.5; // レーン速度倍率
+let rollSpeed=600;  // AUTO連打秒速
 
 // Audio
 const audio=new Audio();
@@ -428,64 +460,51 @@ function loadCourse(label){
 // =========================================================
 function drawSoulGauge(W){
   const LAMP_N=50;
-  const GH=20; // ランプ高さ
-  // 右端に魂アイコン(24px)、左端にラベル余白
-  const SOUL_W=28, GAP=2;
+  const GH=20, GAP=2, SOUL_W=28;
   const GX=TX-10;
   const GW=W-GX-SOUL_W-12;
-  const GY=YC-44-GH-4;
+  const GY=YC+44+12; // レーン背景の下
   const lampW=(GW-(LAMP_N-1)*GAP)/LAMP_N;
 
-  // 背景
-  ctx.fillStyle='#111'; ctx.fillRect(GX-2,GY-2,GW+SOUL_W+14,GH+4);
+  ctx.fillStyle='#111'; ctx.fillRect(GX-2,GY-2,GW+SOUL_W+14,GH+14);
 
-  // クリアライン・魂ラインの位置（ランプ本数で決まる）
   const clPct={ONI:0.596,HARD:0.50,NORMAL:0.50,EASY:0.44}[courseType]??0.55;
   const slPct={ONI:0.745,HARD:0.72,NORMAL:0.75,EASY:0.73}[courseType]??0.75;
-  const clLamp=Math.round(clPct*LAMP_N); // クリアライン到達ランプ番号
-  const slLamp=Math.round(slPct*LAMP_N); // 魂ライン到達ランプ番号
-  const litN=Math.round(gaugeVal*LAMP_N); // 点灯本数
+  const clLamp=Math.round(clPct*LAMP_N);
+  const slLamp=Math.round(slPct*LAMP_N);
+  const litN=Math.round(gaugeVal*LAMP_N);
 
   for(let i=0;i<LAMP_N;i++){
     const lx=GX+i*(lampW+GAP);
     const lit=i<litN;
-    // 色: 0〜clLamp=赤系、clLamp〜slLamp=黄系、slLamp〜=虹
     let color;
     if(!lit){
       color='#2a2a2a';
     } else if(i<clLamp){
-      // 赤→オレンジ
       const t=i/Math.max(1,clLamp-1);
-      const r=255, g=Math.round(80+t*80), b=0;
-      color=`rgb(${r},${g},${b})`;
+      color=`rgb(255,${Math.round(80+t*80)},0)`;
     } else if(i<slLamp){
-      // 黄→黄緑
       const t=(i-clLamp)/Math.max(1,slLamp-clLamp-1);
-      const r=Math.round(255-t*100), g=255, b=Math.round(t*60);
-      color=`rgb(${r},${g},${b})`;
+      color=`rgb(${Math.round(255-t*100)},255,${Math.round(t*60)})`;
     } else {
-      // 虹（シアン→青紫）
       const t=(i-slLamp)/Math.max(1,LAMP_N-slLamp-1);
-      const hue=180+t*120; // 180(シアン)〜300(紫)
-      color=`hsl(${hue},100%,60%)`;
+      color=`hsl(${180+t*120},100%,60%)`;
     }
-    ctx.fillStyle=color;
-    ctx.fillRect(lx,GY,lampW,GH);
+    ctx.fillStyle=color; ctx.fillRect(lx,GY,lampW,GH);
 
-    // クリアライン・魂ラインに縦線
     if(i===clLamp-1){
       ctx.strokeStyle='#fff'; ctx.lineWidth=2;
-      ctx.beginPath(); ctx.moveTo(lx+lampW+GAP/2,GY-4); ctx.lineTo(lx+lampW+GAP/2,GY+GH+4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(lx+lampW+GAP/2,GY-3); ctx.lineTo(lx+lampW+GAP/2,GY+GH+3); ctx.stroke();
     }
     if(i===slLamp-1){
       ctx.strokeStyle='#ffd700'; ctx.lineWidth=2.5;
-      ctx.beginPath(); ctx.moveTo(lx+lampW+GAP/2,GY-5); ctx.lineTo(lx+lampW+GAP/2,GY+GH+5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(lx+lampW+GAP/2,GY-4); ctx.lineTo(lx+lampW+GAP/2,GY+GH+4); ctx.stroke();
     }
   }
 
-  // 魂アイコン（右端）
+  // 魂アイコン: gaugeVal>=1.0で点灯
+  const soulLit=gaugeVal>=1.0;
   const fx=GX+GW+SOUL_W/2+4, fy=GY+GH/2;
-  const soulLit=gaugeVal>=slPct;
   ctx.save(); ctx.translate(fx,fy);
   const fg=ctx.createRadialGradient(0,0,0,0,0,SOUL_W/2);
   if(soulLit){fg.addColorStop(0,'#fff');fg.addColorStop(0.4,'#ff0');fg.addColorStop(0.8,'#f60');fg.addColorStop(1,'rgba(255,80,0,0)');}
@@ -496,7 +515,7 @@ function drawSoulGauge(W){
   ctx.restore();
 
   // ラベル
-  ctx.fillStyle='#aaa'; ctx.font='9px TaikoFont,sans-serif'; ctx.textBaseline='top'; ctx.textAlign='center';
+  ctx.font='9px TaikoFont,sans-serif'; ctx.textBaseline='top'; ctx.textAlign='center';
   const clX=GX+(clLamp-1)*(lampW+GAP)+lampW+GAP/2;
   const slX=GX+(slLamp-1)*(lampW+GAP)+lampW+GAP/2;
   ctx.fillStyle='#ccc'; ctx.fillText('CL',clX,GY+GH+2);
@@ -507,18 +526,23 @@ function drawSoulGauge(W){
 // スコア表示
 // =========================================================
 function drawScore(W){
+  const topY=4;
+  // スコア(右上)
   ctx.textAlign='right'; ctx.textBaseline='top';
-  ctx.font='bold 20px TaikoFont,sans-serif';
-  ctx.fillStyle='#fff';
-  ctx.fillText(String(score).padStart(8,'0'), W-10, 5);
+  ctx.font='bold 20px TaikoFont,sans-serif'; ctx.fillStyle='#fff';
+  ctx.fillText(String(score).padStart(8,'0'), W-10, topY);
+  // コンボ(判定位置上、レーン上)
   if(combo>0){
-    ctx.font='bold 28px TaikoFont,sans-serif'; ctx.fillStyle='#ff0'; ctx.textAlign='center';
-    ctx.fillText(`${combo}コンボ`, TX, YC-44);
+    ctx.font='bold 26px TaikoFont,sans-serif'; ctx.fillStyle='#ff0'; ctx.textAlign='center';
+    ctx.fillText(`${combo}コンボ`, TX, YC-52);
   }
-  ctx.font='12px TaikoFont,sans-serif'; ctx.textAlign='left'; ctx.textBaseline='top';
-  ctx.fillStyle='#0f0'; ctx.fillText(`良:${goodCount}`, 5, 5);
-  ctx.fillStyle='#ff0'; ctx.fillText(`可:${okCount}`, 5, 20);
-  ctx.fillStyle='#f44'; ctx.fillText(`不可:${missCount}`, 5, 35);
+  // 判定内訳(左上)
+  ctx.font='13px TaikoFont,sans-serif'; ctx.textAlign='left'; ctx.textBaseline='top';
+  ctx.fillStyle='#0f0'; ctx.fillText(`良:${goodCount}`, 5, topY);
+  ctx.fillStyle='#ff0'; ctx.fillText(`可:${okCount}`, 5, topY+16);
+  ctx.fillStyle='#f44'; ctx.fillText(`不可:${missCount}`, 5, topY+32);
+  // maxコンボ
+  ctx.fillStyle='#aaa'; ctx.fillText(`最大:${maxCombo}`, 5, topY+48);
 }
 
 // =========================================================
@@ -555,7 +579,7 @@ function update(){
 
   // 小節線
   bars.forEach(b=>{
-    const pps=BPX*b.scroll*(b.bpm/currentCourse.bpm);
+    const pps=BPX*b.scroll*(b.bpm/currentCourse.bpm)*laneSpeed;
     const x=TX+(b.time-now)*pps;
     if(x>0&&x<W){
       ctx.strokeStyle=b.branchStart?'#ff0':'#444'; ctx.lineWidth=b.branchStart?3:2;
@@ -583,8 +607,8 @@ function update(){
   }
 
   notes.forEach(n=>{
-    const pps=BPX*n.scroll*(n.bpm/currentCourse.bpm);
-    const endPps=n.endScroll!=null?BPX*n.endScroll*(n.endBpm/currentCourse.bpm):pps;
+    const pps=BPX*n.scroll*(n.bpm/currentCourse.bpm)*laneSpeed;
+    const endPps=n.endScroll!=null?BPX*n.endScroll*(n.endBpm/currentCourse.bpm)*laneSpeed:pps;
     const x=TX+(n.time-now)*pps;
     const xEnd=TX+(n.endTime-now)*endPps;
 
@@ -601,7 +625,7 @@ function update(){
       if([5,6,7,9].includes(n.type)&&now>=n.time&&now<n.endTime&&!n.fin){
         // FPS非依存: 秒速600打 = 1打あたり1/600秒
         // audio.currentTimeベースで経過時間を積算
-        const interval=1/600;
+        const interval=1/rollSpeed;
         if(now>=n.lastA+interval){
           const hits=Math.floor((now-n.lastA)/interval);
           for(let h=0;h<hits;h++){
@@ -638,27 +662,28 @@ function update(){
     }
   });
 
-  // エフェクト
+  // エフェクト（判定表示: レーン内の判定位置上）
   effects=effects.filter(e=>{
     const age=Date.now()-e.time;
     if(age<300){
       ctx.globalAlpha=1-age/300;
-      ctx.fillStyle=e.color||'#ff0'; ctx.font='bold 28px TaikoFont,sans-serif'; ctx.textAlign='center';
-      ctx.fillText(e.t,TX,YC-52); ctx.globalAlpha=1; return true;
+      ctx.fillStyle=e.color||'#ff0'; ctx.font='bold 26px TaikoFont,sans-serif'; ctx.textAlign='center';
+      ctx.textBaseline='middle';
+      ctx.fillText(e.t,TX,YC); ctx.globalAlpha=1; return true;
     }
     return false;
   });
 
-  // 連打カウント
+  // 連打カウント（レーン右端・レーン内に収める）
   if(rollTotalHits>0){
-    ctx.textAlign='right'; ctx.font='bold 15px TaikoFont,sans-serif'; ctx.textBaseline='middle';
-    ctx.fillStyle='#0ff'; ctx.fillText(`累計 ${rollTotalHits}`,W-10,YC-24);
+    ctx.textAlign='right'; ctx.font='bold 14px TaikoFont,sans-serif'; ctx.textBaseline='middle';
+    ctx.fillStyle='#0ff'; ctx.fillText(`累計 ${rollTotalHits}`,W-10,YC-28);
   }
   const rollAge=now-rollEndedAt;
   if(rollCurrentHits>0&&rollAge<1.0){
     ctx.globalAlpha=rollAge<0.7?1:1-(rollAge-0.7)/0.3;
-    ctx.textAlign='right'; ctx.font='bold 24px TaikoFont,sans-serif'; ctx.textBaseline='middle';
-    ctx.fillStyle='#ff0'; ctx.fillText(`${rollCurrentHits}打`,W-10,YC+6); ctx.globalAlpha=1;
+    ctx.textAlign='right'; ctx.font='bold 22px TaikoFont,sans-serif'; ctx.textBaseline='middle';
+    ctx.fillStyle='#ff0'; ctx.fillText(`${rollCurrentHits}打`,W-10,YC-8); ctx.globalAlpha=1;
   }
   if(rollAge>=1.0&&rollCurrentHits>0) rollCurrentHits=0;
 
@@ -761,6 +786,13 @@ document.getElementById('play-btn').onclick=()=>{
 };
 document.getElementById('apply-btn').onclick=()=>parseTJA(document.getElementById('tja-editor').value);
 document.getElementById('speed-num').onchange=e=>{audio.playbackRate=parseFloat(e.target.value)||1.0;audio.preservesPitch=true;};
+document.getElementById('lane-speed').onchange=e=>{laneSpeed=parseFloat(e.target.value)||1.5;};
+document.getElementById('roll-speed').onchange=e=>{rollSpeed=parseInt(e.target.value)||600;};
+document.getElementById('auto-play').onchange=e=>{
+  document.getElementById('roll-speed-ctrl').style.display=e.target.checked?'flex':'none';
+};
+// 初期状態でAUTOがチェックされているので表示
+document.getElementById('roll-speed-ctrl').style.display='flex';
 document.getElementById('course-select').onchange=e=>loadCourse(e.target.value);
 
 document.getElementById('f-combined').onchange=async e=>{
