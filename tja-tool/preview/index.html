@@ -177,7 +177,7 @@ setupCanvas(); window.addEventListener('resize',setupCanvas);
 // =========================================================
 let courses={},currentCourse=null;
 let notes=[],bars=[],effects=[];
-let hasBranch=false,branchTimeline=[];
+let hasBranch=false,branchTimeline=[],branchEvents=[];
 let totalNotes=0,goodCount=0,okCount=0,missCount=0,combo=0,maxCombo=0,score=0,gaugeVal=0;
 let courseLevel=10,courseType='ONI';
 let goodAdd=0,okAdd=0,missSub=0;
@@ -291,7 +291,7 @@ function parseTJA(text){
 function loadCourse(label){
   const c=courses[label]; if(!c) return;
   currentCourse=c;
-  notes=[]; bars=[]; effects=[]; branchTimeline=[];
+  notes=[]; bars=[]; effects=[]; branchTimeline=[]; branchEvents=[];
   totalNotes=0; goodCount=0; okCount=0; missCount=0;
   combo=0; maxCombo=0; score=0; gaugeVal=0;
   rollTotalHits=0; rollCurrentHits=0; rollEndedAt=-999;
@@ -336,7 +336,7 @@ function loadCourse(label){
   // Step1: TJAラインを読んで分岐ブロック情報とフラットラインを構築
   // フラットラインには全セクションを含め、各行に {branchId, branch} を付与
 
-  const branchEvents=[]; // 各#BRANCHSTARTの情報
+  branchEvents=[]; // 各#BRANCHSTARTの情報（グローバル変数）
   const flatLines=[];    // {line:string, branchId:number|null, branch:'N'|'E'|'M'|null} | コントロールオブジェクト
 
   let bi=0, levelHoldActive=false, bId=0;
