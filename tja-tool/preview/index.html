@@ -156,12 +156,42 @@ let se={};
 audioCtx.createMediaElementSource(audio).connect(audioCtx.destination);
 async function initSE(){
   const base='https://raw.githubusercontent.com/shiratama-kotone/any-app/main/assets/taiko/';
-  for(const[n,f]of[['dong','dong.wav'],['ka','ka.wav'],['balloon','balloon.wav']]){
-    const r=await fetch(base+f); se[n]=await audioCtx.decodeAudioData(await r.arrayBuffer());
+  for(const[n,f]of[['dong','dong.wav'],['ka','ka.wav'],['balloon','balloon.wav'],
+                    ['fullcombo','fullcombo.wav'],['dondafull','dondafullCombo.wav']]){
+    try{const r=await fetch(base+f);se[n]=await audioCtx.decodeAudioData(await r.arrayBuffer());}catch(e){}
+  }
+  // 100〜1500の100刻みコンボ音を事前ロード
+  for(let c=100;c<=1500;c+=100){
+    try{
+      const r=await fetch(`${base}${c}.wav`);
+      se[`combo${c}`]=await audioCtx.decodeAudioData(await r.arrayBuffer());
+    }catch(e){}
   }
 }
 initSE();
 function playSE(t){if(!se[t])return;const s=audioCtx.createBufferSource();s.buffer=se[t];s.connect(audioCtx.destination);s.start(0);}
+
+function checkComboSound(){
+  const milestone=Math.floor(combo/100)*100;
+  if(milestone>=100&&milestone<=1500&&milestone!==lastComboSound){
+    lastComboSound=milestone;
+    playSE(`combo${milestone}`);
+  }
+}
+
+function checkFullCombo(){
+  if(gameEnded) return;
+  // 全ノートが判定済みかチェック
+  const activeNotes=notes.filter(n=>n.type>=1&&n.type<=4&&isNoteActive(n));
+  if(!activeNotes.length) return;
+  if(activeNotes.some(n=>!n.judged)) return;
+  gameEnded=true;
+  if(missCount===0&&okCount===0){
+    setTimeout(()=>playSE('dondafull'),500); // ドンダフルコンボ（全良）
+  } else if(missCount===0){
+    setTimeout(()=>playSE('fullcombo'),500); // フルコンボ（不可なし）
+  }
+}
 
 // =========================================================
 // Canvas setup
@@ -182,6 +212,8 @@ let totalNotes=0,goodCount=0,okCount=0,missCount=0,combo=0,maxCombo=0,score=0,ga
 let courseLevel=10,courseType='ONI';
 let goodAdd=0,okAdd=0,missSub=0;
 let rollTotalHits=0,rollCurrentHits=0,rollEndedAt=-999;
+let lastComboSound=0; // 最後にコンボ音を鳴らした100の倍数
+let gameEnded=false;  // 曲終了フラグ
 
 // =========================================================
 // スコア・ゲージ計算
@@ -295,6 +327,7 @@ function loadCourse(label){
   totalNotes=0; goodCount=0; okCount=0; missCount=0;
   combo=0; maxCombo=0; score=0; gaugeVal=0;
   rollTotalHits=0; rollCurrentHits=0; rollEndedAt=-999;
+  lastComboSound=0; gameEnded=false;
 
   const cl=label.toUpperCase();
   if(cl.includes('ONI')||cl.includes('URA')) courseType='ONI';
@@ -435,22 +468,29 @@ function loadCourse(label){
       if(noteBufChunks.some(c=>c.data.length>0)) flush();
       rollStack=[];
       if(bars.length>0) bars[bars.length-1].branchStart=true;
-      // このBRANCHSTARTの時刻を記録
+      // この時点の状態をスナップショット保存（各セクション開始時に巻き戻すため）
+      item._snap={curTime,bpm,scroll,measure,measureStartBpm,measureStartMeasure};
       branchEvents.push({id:item.id, time:curTime, cond:item.cond,
                          hasBranchEnd:item.hasBranchEnd, levelHold:item.levelHold,
-                         activeBranch:null}); // activeBranchは再生中に決定
-      branchTimeline.push({id:item.id, branch:'N', startTime:curTime, endTime:Infinity}); // 仮でN
+                         activeBranch:null});
+      branchTimeline.push({id:item.id, branch:'N', startTime:curTime, endTime:Infinity});
       continue;
     }
     if(item._secStart){
       if(noteBufChunks.some(c=>c.data.length>0)) flush();
       rollStack=[];
+      // _bStartのスナップショットに戻す
+      const snap=flatLines.find(f=>f._bStart&&f.id===item.id)?._snap;
+      if(snap){curTime=snap.curTime;bpm=snap.bpm;scroll=snap.scroll;measure=snap.measure;measureStartBpm=snap.measureStartBpm;measureStartMeasure=snap.measureStartMeasure;}
       curBranchId=item.id; curBranch=item.branch;
       continue;
     }
     if(item._secEnd){
       if(noteBufChunks.some(c=>c.data.length>0)) flush();
       rollStack=[];
+      // このセクションが終わった時点のcurTimeを記録（全セクション中の最大値を使う）
+      const ev=branchEvents.find(e=>e.id===item.id);
+      if(ev) ev._secEndTimes=(ev._secEndTimes||{}), ev._secEndTimes[item.branch]=curTime;
       curBranchId=null; curBranch=null;
       continue;
     }
@@ -458,7 +498,11 @@ function loadCourse(label){
       if(noteBufChunks.some(c=>c.data.length>0)) flush();
       const ev=branchEvents.find(e=>e.id===item.id);
       if(ev){
-        // BRANCHENDがある場合: このブロック終了後にNに戻る区間を追加
+        // 全セクションの最大curTimeを採用（一番長いセクションに合わせる）
+        const times=Object.values(ev._secEndTimes||{});
+        if(times.length) curTime=Math.max(...times);
+        const bt=branchTimeline.find(b=>b.id===ev.id);
+        if(bt) bt.endTime=curTime;
         if(item.hasBranchEnd){
           branchTimeline.push({id:-1, branch:'N', startTime:curTime, endTime:Infinity});
         }
@@ -850,6 +894,7 @@ function update(){
         goodCount++; combo++; if(combo>maxCombo)maxCombo=combo;
         score+=calcNoteScore(combo-1);
         gaugeVal=Math.min(1,gaugeVal+goodAdd);
+        checkComboSound();
         effects.push({t:'良',time:Date.now(),color:'#0f0'});
       }
       if([5,6,7,9].includes(n.type)&&now>=n.time&&now<n.endTime&&!n.fin){
@@ -955,14 +1000,16 @@ function judgeHit(isDon){
   if(bestDist<=GW){
     best.judged='good'; goodCount++; combo++; if(combo>maxCombo)maxCombo=combo;
     score+=calcNoteScore(combo-1); gaugeVal=Math.min(1,gaugeVal+goodAdd);
+    checkComboSound();
     effects.push({t:'良',time:Date.now(),color:'#0f0'});
   } else {
-    // 可: コンボ継続
     best.judged='ok'; okCount++;
     combo++; if(combo>maxCombo)maxCombo=combo;
     score+=Math.floor(calcNoteScore(combo-1)/2); gaugeVal=Math.min(1,gaugeVal+okAdd);
+    checkComboSound();
     effects.push({t:'可',time:Date.now(),color:'#ff0'});
   }
+  checkFullCombo();
 }
 
 document.addEventListener('keydown',e=>{
@@ -1152,6 +1199,7 @@ document.getElementById('fa').onchange=e=>{
   e.target.value='';
 };
 audio.onloadedmetadata=()=>{document.getElementById('seek-bar').max=audio.duration;};
+audio.onended=()=>{ setTimeout(checkFullCombo,600); };
 document.getElementById('seek-bar').oninput=e=>{
   audio.currentTime=parseFloat(e.target.value);
   notes.forEach(n=>{n.hit=n.fin=false;n.curH=0;n.lastA=n.time;n.judged=null;});
@@ -1160,6 +1208,7 @@ document.getElementById('seek-bar').oninput=e=>{
   branchTimeline.forEach(bt=>{ if(bt.id>=0) bt.branch='N'; }); // 仮にNに戻す
   goodCount=0;okCount=0;missCount=0;combo=0;maxCombo=0;score=0;gaugeVal=0;
   rollTotalHits=0;rollCurrentHits=0;rollEndedAt=-999;
+  lastComboSound=0; gameEnded=false;
   totalNotes=notes.filter(n=>n.branchId===null&&n.type>=1&&n.type<=4).length;
   const gr=calcGaugeRate(courseType,courseLevel,Math.max(1,totalNotes));
   goodAdd=gr.goodAdd; okAdd=gr.goodAdd*gr.okMul; missSub=gr.goodAdd*gr.missMul;
