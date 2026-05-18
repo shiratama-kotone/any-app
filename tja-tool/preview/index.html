@@ -146,7 +146,7 @@ const SP={1:{x:202,w:78},2:{x:360,w:80},3:{x:495,w:128},4:{x:655,w:128},
           7:{x:1798,w:212},8:{x:1145,w:75},9:{x:2095,w:130},judge:{x:15,w:130}};
 const NOTE_LABEL={1:'ドン',2:'カッ',3:'ドン',4:'カッ',5:'連打',6:'大連打',7:'風船',9:'連打'};
 
-const TX=150,YC=120,BPX=400,SC=0.5,CH=280;
+const TX=150,YC=60,BPX=400,SC=0.5,CH=280;
 let laneSpeed=1.0, rollSpeed=600;
 
 // =========================================================
@@ -162,6 +162,7 @@ async function initSE(){
                     ['fullcombo','fullcombo.wav'],['dondafull','dondafullCombo.wav']]){
     try{const r=await fetch(base+f);se[n]=await audioCtx.decodeAudioData(await r.arrayBuffer());}catch(e){}
   }
+  // 100〜1500の100刻みコンボ音を事前ロード
   for(let c=100;c<=1500;c+=100){
     try{
       const r=await fetch(`${base}${c}.wav`);
@@ -182,14 +183,15 @@ function checkComboSound(){
 
 function checkFullCombo(){
   if(gameEnded) return;
+  // 全ノートが判定済みかチェック
   const activeNotes=notes.filter(n=>n.type>=1&&n.type<=4&&isNoteActive(n));
   if(!activeNotes.length) return;
   if(activeNotes.some(n=>!n.judged)) return;
   gameEnded=true;
   if(missCount===0&&okCount===0){
-    setTimeout(()=>playSE('dondafull'),500);
+    setTimeout(()=>playSE('dondafull'),500); // ドンダフルコンボ（全良）
   } else if(missCount===0){
-    setTimeout(()=>playSE('fullcombo'),500);
+    setTimeout(()=>playSE('fullcombo'),500); // フルコンボ（不可なし）
   }
 }
 
@@ -208,26 +210,36 @@ setupCanvas(); window.addEventListener('resize',setupCanvas);
 let courses={},currentCourse=null;
 let notes=[],bars=[],effects=[];
 let hasBranch=false,branchTimeline=[],branchEvents=[];
-let totalNotes=0,goodCount=0,okCount=0,missCount=0,combo=0,maxCombo=0,score=0,gaugeVal=0,normaGauge=0;
+let totalNotes=0,goodCount=0,okCount=0,missCount=0,combo=0,maxCombo=0,score=0,gaugeVal=0;
 let courseLevel=10,courseType='ONI';
-let baseNoteScore=0,okAdd=0,missSub=0;
+let goodAdd=0,okAdd=0,missSub=0;
 let rollTotalHits=0,rollCurrentHits=0,rollEndedAt=-999;
 let lastComboSound=0;
 let gameEnded=false;
 
 // =========================================================
-// スコア計算（天井100万点）
+// スコア・ゲージ計算（変更：天井100万点、連打は全て100点）
 // =========================================================
 function calcNoteScore(c){
-  const scoreInc=Math.floor(baseNoteScore/10);
-  return baseNoteScore+scoreInc*Math.min(10,Math.floor(c/10));
+  // 天井スコアが100万点になるよう基本スコアを計算
+  // 連打を除いた基本ノート数
+  const baseNotesOnly=notes.filter(n=>n.type>=1&&n.type<=4).length;
+  if(baseNotesOnly===0) return 0;
+  
+  // 連打は1打100点なので、基本ノートで900000点を稼ぐ
+  const scorePerNote=Math.floor(900000/baseNotesOnly);
+  const comboBonus=Math.floor(scorePerNote*c/10)/10;
+  return scorePerNote+comboBonus;
 }
 
-function calcGaugeValues(nNotes){
-  const baseGood=1.0/Math.max(1,nNotes);
-  const baseOk=baseGood*0.5;
-  const baseMiss=baseGood*1.6;
-  return {baseGood,baseOk,baseMiss};
+function calcGaugeRate(type,level,nNotes){
+  let okMul=0.5,missMul=1.6;
+  if(type==='ONI'||type==='URA'){okMul=0.5;missMul=level<=7?1.6:2.0;}
+  else if(type==='HARD'){okMul=0.75;missMul=level<=2?0.75:level===3?1.0:level===4?1.17:1.25;}
+  else if(type==='NORMAL'){okMul=0.75;missMul=level<=4?0.75:1.0;}
+  else{okMul=0.75;missMul=0.5;}
+  const g=1.0/Math.max(1,nNotes);
+  return{goodAdd:g,okMul,missMul};
 }
 
 // =========================================================
@@ -316,7 +328,7 @@ function loadCourse(label){
   currentCourse=c;
   notes=[]; bars=[]; effects=[]; branchTimeline=[]; branchEvents=[];
   totalNotes=0; goodCount=0; okCount=0; missCount=0;
-  combo=0; maxCombo=0; score=0; gaugeVal=0; normaGauge=0;
+  combo=0; maxCombo=0; score=0; gaugeVal=0;
   rollTotalHits=0; rollCurrentHits=0; rollEndedAt=-999;
   lastComboSound=0; gameEnded=false;
 
@@ -491,13 +503,12 @@ function loadCourse(label){
   if(noteBufChunks.some(c=>c.data.length>0)) flush();
 
   applyOptions(notes);
-  const gauges=calcGaugeValues(Math.max(1,totalNotes));
-  baseNoteScore=Math.floor(1000000/(Math.max(1,totalNotes)+rollTotalHits));
-  okAdd=gauges.baseOk; missSub=gauges.baseMiss;
+  const gr=calcGaugeRate(courseType,courseLevel,Math.max(1,totalNotes));
+  goodAdd=gr.goodAdd; okAdd=gr.goodAdd*gr.okMul; missSub=gr.goodAdd*gr.missMul;
 
   if(!hasBranch) document.getElementById('branch-badge').className='branch-badge';
   document.getElementById('status-bar').textContent=
-    `Notes:${totalNotes}+ Rolls:${rollTotalHits} BPM:${c.bpm} Course:${courseType} Lv:${courseLevel} Branch:${hasBranch?'あり':'なし'}`;
+    `Notes:${totalNotes}+ BPM:${c.bpm} Course:${courseType} Lv:${courseLevel} Branch:${hasBranch?'あり':'なし'}`;
 }
 
 // =========================================================
@@ -576,8 +587,8 @@ function updateBranchDecision(now){
 
     const addNotes=notes.filter(n=>n.branchId===ev.id&&n.branch===chosen&&n.type>=1&&n.type<=4).length;
     totalNotes+=addNotes;
-    const gauges=calcGaugeValues(Math.max(1,totalNotes));
-    okAdd=gauges.baseOk; missSub=gauges.baseMiss;
+    const gr=calcGaugeRate(courseType,courseLevel,Math.max(1,totalNotes));
+    goodAdd=gr.goodAdd; okAdd=gr.goodAdd*gr.okMul; missSub=gr.goodAdd*gr.missMul;
   }
 }
 
@@ -661,56 +672,74 @@ document.getElementById('save-btn').onclick=async()=>{
 };
 
 // =========================================================
-// ノルマゲージ描画
+// ノルマゲージ (50本ランプ、上部に移動)
 // =========================================================
 function drawNormaGauge(W){
-  const GH=16,GY=10;
-  const GX=5,GW=W-10;
-  ctx.fillStyle='#1a1a1a'; ctx.fillRect(GX-2,GY-2,GW+4,GH+4);
-  ctx.fillStyle='#333'; ctx.fillRect(GX,GY,GW,GH);
-  
-  const normaLine=0.596;
-  const litW=GW*normaGauge;
-  ctx.fillStyle='#0f0'; ctx.fillRect(GX,GY,litW,GH);
-  
-  const normaX=GX+GW*normaLine;
-  ctx.strokeStyle='#fff'; ctx.lineWidth=2;
-  ctx.beginPath(); ctx.moveTo(normaX,GY-3); ctx.lineTo(normaX,GY+GH+3); ctx.stroke();
-  ctx.fillStyle='#ccc'; ctx.font='8px TF,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top';
-  ctx.fillText('ノルマ',normaX,GY+GH+2);
+  const LAMP_N=50,GH=20,GAP=2;
+  const GX=TX-10,GW=W-GX-12,GY=5;
+  const lampW=(GW-(LAMP_N-1)*GAP)/LAMP_N;
+  ctx.fillStyle='#111'; ctx.fillRect(GX-2,GY-2,GW+14,GH+16);
+
+  const clPct={ONI:0.596,HARD:0.50,NORMAL:0.50,EASY:0.44}[courseType]??0.55;
+  const clLamp=Math.round(clPct*LAMP_N);
+  const litN=Math.min(LAMP_N,Math.round(gaugeVal*LAMP_N));
+
+  for(let i=0;i<LAMP_N;i++){
+    const lx=GX+i*(lampW+GAP);
+    let color='#2a2a2a';
+    if(i<litN){
+      if(i<clLamp){
+        const t=i/Math.max(1,clLamp-1);
+        color=`rgb(255,${Math.round(80+t*80)},0)`;
+      } else {
+        const t=(i-clLamp)/Math.max(1,LAMP_N-clLamp-1);
+        color=`rgb(${Math.round(255-t*100)},255,${Math.round(t*60)})`;
+      }
+    }
+    ctx.fillStyle=color; ctx.fillRect(lx,GY,lampW,GH);
+    if(i===clLamp-1){
+      ctx.strokeStyle='#fff'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(lx+lampW+GAP/2,GY-3); ctx.lineTo(lx+lampW+GAP/2,GY+GH+3); ctx.stroke();
+    }
+  }
+
+  ctx.font='9px TF,sans-serif'; ctx.textBaseline='top'; ctx.textAlign='center';
+  const clX=GX+(clLamp-1)*(lampW+GAP)+lampW+GAP/2;
+  ctx.fillStyle='#ccc'; ctx.fillText('CL',clX,GY+GH+2);
 }
 
 // =========================================================
-// スコア表示
+// スコア表示（変更：コンボを左に、可は良の50%）
 // =========================================================
 function drawScore(W){
-  const hitRate=totalNotes>0?Math.round((totalNotes-missCount)/totalNotes*100):100;
-  
+  // スコア（右上）
   ctx.textAlign='right'; ctx.textBaseline='top';
   ctx.font='bold 20px TF,sans-serif'; ctx.fillStyle='#fff';
-  ctx.fillText(String(score).padStart(8,'0'),W-10,4);
-  
+  ctx.fillText(String(score).padStart(8,'0'),W-10,30);
+
+  // コンボ（左上）
   if(combo>0){
-    ctx.font='bold 32px TF,sans-serif'; ctx.fillStyle='#ff0'; ctx.textAlign='left'; ctx.textBaseline='top';
-    ctx.fillText(String(combo),5,YC-50);
-    ctx.font='bold 12px TF,sans-serif'; ctx.fillStyle='#ff0';
-    ctx.fillText('コンボ',5,YC-18);
+    ctx.font='bold 36px TF,sans-serif'; ctx.fillStyle='#ff0'; ctx.textAlign='left'; ctx.textBaseline='top';
+    ctx.fillText(`${combo}`,5,30);
+    ctx.font='9px TF,sans-serif'; ctx.fillStyle='#ff0';
+    ctx.fillText('コンボ',5,68);
   }
-  
+
+  // その他スタッツ
+  const hitRate=totalNotes>0?Math.round((totalNotes-missCount)/totalNotes*100):100;
   ctx.font='12px TF,sans-serif'; ctx.textAlign='left'; ctx.textBaseline='top';
-  ctx.fillStyle='#0f0'; ctx.fillText(`良:${goodCount}`,5,50);
-  ctx.fillStyle='#ff0'; ctx.fillText(`可:${okCount}`,5,65);
-  ctx.fillStyle='#f44'; ctx.fillText(`不可:${missCount}`,5,80);
-  ctx.fillStyle='#0ff'; ctx.fillText(`叩:${hitRate}%`,5,95);
-  
+  ctx.fillStyle='#0f0'; ctx.fillText(`良:${goodCount}`,5,80);
+  ctx.fillStyle='#ff0'; ctx.fillText(`可:${okCount}`,5,95);
+  ctx.fillStyle='#f44'; ctx.fillText(`不可:${missCount}`,5,110);
+  ctx.fillStyle='#0ff'; ctx.fillText(`叩:${hitRate}%`,5,125);
   if(rollTotalHits>0){
-    ctx.fillStyle='#0ff'; ctx.fillText(`連打:${rollTotalHits}`,5,110);
+    ctx.fillStyle='#0ff'; ctx.fillText(`連打:${rollTotalHits}`,5,140);
   }
-  const rollAge=(audio.currentTime+(currentCourse?.offset??0))-rollEndedAt;
+  const rollAge=(audio.currentTime+( currentCourse?.offset??0))-rollEndedAt;
   if(rollCurrentHits>0&&rollAge<1.0){
     ctx.globalAlpha=rollAge<0.7?1:1-(rollAge-0.7)/0.3;
     ctx.fillStyle='#ff0'; ctx.font='bold 14px TF,sans-serif';
-    ctx.fillText(`↑${rollCurrentHits}打`,5,125);
+    ctx.fillText(`↑${rollCurrentHits}打`,5,155);
     ctx.globalAlpha=1;
   }
 }
@@ -767,11 +796,31 @@ function update(){
       if(!isNoteActive(n)) continue;
       if(n.judged||n.type>4) continue;
       if(now>n.time+0.108){
-        n.hit=true; n.judged='miss'; missCount++;
-        combo=0;
-        gaugeVal=Math.max(0,gaugeVal-missSub);
-        normaGauge=Math.max(0,normaGauge-missSub);
-        effects.push({t:'不可',time:Date.now(),color:'#f44'});
+        n.hit=true;
+        const rand=Math.random();
+        if(rand<missProb){
+          n.judged='miss'; missCount++;
+          combo=0;
+          gaugeVal=Math.max(0,gaugeVal-missSub);
+          effects.push({t:'不可',time:Date.now(),color:'#f44'});
+        } else if(rand<missProb+okProb){
+          n.judged='ok'; okCount++;
+          combo++;
+          if(combo>maxCombo)maxCombo=combo;
+          const okScore=Math.floor(calcNoteScore(combo-1)*0.5);
+          score+=okScore;
+          gaugeVal=Math.min(1,gaugeVal+okAdd);
+          checkComboSound();
+          effects.push({t:'可',time:Date.now(),color:'#ff0'});
+        } else {
+          n.judged='good'; goodCount++;
+          combo++;
+          if(combo>maxCombo)maxCombo=combo;
+          score+=calcNoteScore(combo-1);
+          gaugeVal=Math.min(1,gaugeVal+goodAdd);
+          checkComboSound();
+          effects.push({t:'良',time:Date.now(),color:'#0f0'});
+        }
       }
     }
   }
@@ -791,30 +840,27 @@ function update(){
           n.judged='miss'; missCount++;
           combo=0;
           gaugeVal=Math.max(0,gaugeVal-missSub);
-          normaGauge=Math.max(0,normaGauge-missSub);
           effects.push({t:'不可',time:Date.now(),color:'#f44'});
         } else if(rand<missProb+okProb){
           n.judged='ok'; okCount++;
+          playSE([1,3].includes(n.dispType)?'dong':'ka');
           combo++;
           if(combo>maxCombo)maxCombo=combo;
-          score+=Math.floor(calcNoteScore(combo-1)*0.5);
+          const okScore=Math.floor(calcNoteScore(combo-1)*0.5);
+          score+=okScore;
           gaugeVal=Math.min(1,gaugeVal+okAdd);
-          normaGauge=Math.min(1,normaGauge+okAdd);
           checkComboSound();
           effects.push({t:'可',time:Date.now(),color:'#ff0'});
-          playSE('ka');
         } else {
           n.judged='good';
           playSE([1,3].includes(n.dispType)?'dong':'ka');
-          goodCount++;
-          combo++;
-          if(combo>maxCombo)maxCombo=combo;
+          goodCount++; combo++; if(combo>maxCombo)maxCombo=combo;
           score+=calcNoteScore(combo-1);
-          gaugeVal=Math.min(1,gaugeVal+1/Math.max(1,totalNotes));
-          normaGauge=Math.min(1,normaGauge+1/Math.max(1,totalNotes));
+          gaugeVal=Math.min(1,gaugeVal+goodAdd);
           checkComboSound();
           effects.push({t:'良',time:Date.now(),color:'#0f0'});
         }
+        checkFullCombo();
       }
       if([5,6,7,9].includes(n.type)&&now>=n.time&&now<n.endTime&&!n.fin){
         const interval=1/rollSpeed;
@@ -822,10 +868,7 @@ function update(){
           const hits=Math.floor((now-n.lastA)/interval);
           for(let h=0;h<hits;h++){
             playSE('dong'); n.curH++;
-            if([5,6].includes(n.type)){
-              rollTotalHits++;rollCurrentHits++;
-              score+=100;
-            }
+            if([5,6].includes(n.type)){rollTotalHits++;rollCurrentHits++; score+=100;}
             if([7,9].includes(n.type)&&n.curH>=n.req){n.fin=true;playSE('balloon');rollEndedAt=now;break;}
           }
           n.lastA+=hits*interval;
@@ -879,7 +922,6 @@ function update(){
   const rollAge=now-rollEndedAt;
   if(rollAge>=1.0&&rollCurrentHits>0) rollCurrentHits=0;
 
-  checkFullCombo();
   drawNormaGauge(W);
   drawScore(W);
   requestAnimationFrame(update);
@@ -918,140 +960,149 @@ function judgeHit(isDon){
   }
   if(!best) return;
   best.hit=true;
+  const okProb=parseFloat(document.getElementById('ok-prob').value)||0;
+  const missProb=parseFloat(document.getElementById('miss-prob').value)||0;
   if(bestDist<=GW){
-    best.judged='good';
-    playSE(isDon?'dong':'ka');
-    goodCount++;
-    combo++;
-    if(combo>maxCombo)maxCombo=combo;
-    score+=calcNoteScore(combo-1);
-    gaugeVal=Math.min(1,gaugeVal+1/Math.max(1,totalNotes));
-    normaGauge=Math.min(1,normaGauge+1/Math.max(1,totalNotes));
-    checkComboSound();
-    effects.push({t:'良',time:Date.now(),color:'#0f0'});
-  } else if(bestDist<=OW){
-    best.judged='ok';
-    playSE(isDon?'dong':'ka');
-    okCount++;
-    combo++;
-    if(combo>maxCombo)maxCombo=combo;
-    score+=Math.floor(calcNoteScore(combo-1)*0.5);
-    gaugeVal=Math.min(1,gaugeVal+okAdd);
-    normaGauge=Math.min(1,normaGauge+okAdd);
-    checkComboSound();
-    effects.push({t:'可',time:Date.now(),color:'#ff0'});
+    const rand=Math.random();
+    if(rand<missProb){
+      best.judged='miss'; missCount++;
+      combo=0;
+      gaugeVal=Math.max(0,gaugeVal-missSub);
+      effects.push({t:'不可',time:Date.now(),color:'#f44'});
+    } else if(rand<missProb+okProb){
+      best.judged='ok'; okCount++;
+      combo++;
+      if(combo>maxCombo)maxCombo=combo;
+      const okScore=Math.floor(calcNoteScore(combo-1)*0.5);
+      score+=okScore;
+      gaugeVal=Math.min(1,gaugeVal+okAdd);
+      checkComboSound();
+      effects.push({t:'可',time:Date.now(),color:'#ff0'});
+    } else {
+      best.judged='good'; goodCount++; combo++; if(combo>maxCombo)maxCombo=combo;
+      score+=calcNoteScore(combo-1);
+      gaugeVal=Math.min(1,gaugeVal+goodAdd);
+      checkComboSound();
+      effects.push({t:'良',time:Date.now(),color:'#0f0'});
+    }
   } else {
-    best.judged='miss';
-    missCount++;
+    best.judged='miss'; missCount++;
     combo=0;
     gaugeVal=Math.max(0,gaugeVal-missSub);
-    normaGauge=Math.max(0,normaGauge-missSub);
     effects.push({t:'不可',time:Date.now(),color:'#f44'});
   }
+  checkFullCombo();
 }
 
-// =========================================================
-// コントロール
-// =========================================================
-document.getElementById('play-btn').onclick=()=>{
-  if(audio.paused) audio.play();
-  else audio.pause();
-};
-document.getElementById('seek-bar').oninput=e=>{
-  audio.currentTime=parseFloat(e.target.value);
-};
-document.getElementById('speed-num').oninput=e=>{
-  audio.playbackRate=parseFloat(e.target.value)||1;
-};
-document.getElementById('lane-speed').onchange=e=>{
-  laneSpeed=parseFloat(e.target.value)||1;
-};
-document.getElementById('roll-speed').oninput=e=>{
-  rollSpeed=parseInt(e.target.value)||600;
-};
-document.getElementById('course-select').onchange=e=>{
-  loadCourse(e.target.value);
-};
-
-document.getElementById('fc').onchange=async e=>{
+// ファイル入力
+openDB();
+document.getElementById('fc').onchange=async(e)=>{
   const file=e.target.files[0]; if(!file) return;
-  if(file.name.endsWith('.tja')){
-    const text=decodeBuf(await file.arrayBuffer());
-    document.getElementById('tja-editor').value=text;
-    pendingSave.tjaText=text; pendingSave.filename=file.name;
-  } else if(file.name.endsWith('.zip')){
-    const z=new JSZip(),data=await z.loadAsync(file);
-    for(const [path,f]of Object.entries(data.files)){
+  if(file.name.endsWith('.zip')){
+    const zip=await JSZip.loadAsync(file);
+    for(const[path,obj]of Object.entries(zip.files)){
       if(path.endsWith('.tja')){
-        const text=decodeBuf(await f.async('arraybuffer'));
-        document.getElementById('tja-editor').value=text;
-        pendingSave.tjaText=text; pendingSave.filename=path.split('/').pop();
+        const text=await obj.async('text');
+        document.getElementById('tja-editor').value=decodeBuf(await obj.async('arraybuffer'));
+        pendingSave={tjaText:decodeBuf(await obj.async('arraybuffer')),audioData:null,audioType:'',filename:file.name};
+        parseTJA(pendingSave.tjaText);
+        break;
       }
     }
+  } else {
+    const text=decodeBuf(await file.arrayBuffer());
+    document.getElementById('tja-editor').value=text;
+    pendingSave={tjaText:text,audioData:null,audioType:'',filename:file.name};
+    parseTJA(text);
   }
 };
 
-document.getElementById('fa').onchange=async e=>{
+document.getElementById('fa').onchange=async(e)=>{
   const file=e.target.files[0]; if(!file) return;
   audio.src=URL.createObjectURL(file);
-  pendingSave.audioData=new Uint8Array(await file.arrayBuffer());
+  pendingSave.audioData=await file.arrayBuffer();
   pendingSave.audioType=file.type;
 };
 
 document.getElementById('apply-btn').onclick=()=>{
   const tjaText=document.getElementById('tja-editor').value;
-  if(!tjaText) {alert('TJAを入力してください'); return;}
-  parseTJA(tjaText);
+  if(!tjaText.trim()){alert('TJAテキストが空です');return;}
   pendingSave.tjaText=tjaText;
+  parseTJA(tjaText);
 };
 
-openDB().then(()=>renderSongList());
+document.getElementById('play-btn').onclick=()=>{
+  if(audio.paused) audio.play();
+  else audio.pause();
+};
 
-// キーボード操作
-document.addEventListener('keydown',e=>{
-  if(e.key==='z'||e.key==='Z') judgeHit(true);
-  if(e.key==='x'||e.key==='X') judgeHit(false);
+document.getElementById('seek-bar').oninput=(e)=>{
+  audio.currentTime=parseFloat(e.target.value);
+};
+
+document.getElementById('speed-num').onchange=(e)=>{
+  audio.playbackRate=parseFloat(e.target.value);
+};
+
+document.getElementById('lane-speed').onchange=(e)=>{
+  laneSpeed=parseFloat(e.target.value);
+};
+
+document.getElementById('roll-speed').onchange=(e)=>{
+  rollSpeed=parseInt(e.target.value);
+};
+
+document.getElementById('course-select').onchange=(e)=>{
+  loadCourse(e.target.value);
+};
+
+// キーボード操作（スマホは画面タップで対応）
+document.addEventListener('keydown',(e)=>{
+  if(e.key==='z'||e.key==='Z') judgeHit(true); // ドン
+  if(e.key==='x'||e.key==='X') judgeHit(false); // カッ
 });
 
-// タッチ操作
+// スマホ対応タッチ操作
 const taikoCanvas=document.getElementById('taiko-canvas');
 const taikoCtx=taikoCanvas.getContext('2d');
-let touchActive={};
+
+function setupTaikoCanvas(){
+  const dpr=window.devicePixelRatio||1,rect=taikoCanvas.parentElement.getBoundingClientRect();
+  taikoCanvas.width=rect.width*dpr; taikoCanvas.height=130*dpr; taikoCtx.scale(dpr,dpr);
+}
+setupTaikoCanvas(); window.addEventListener('resize',setupTaikoCanvas);
 
 function drawTaikoController(){
-  const W=taikoCanvas.width, H=taikoCanvas.height;
-  taikoCtx.fillStyle='#333'; taikoCtx.fillRect(0,0,W,H);
+  const W=taikoCanvas.width/(window.devicePixelRatio||1),H=130;
+  taikoCtx.fillStyle='#222'; taikoCtx.fillRect(0,0,W,H);
   
-  const centerX=W/2, centerY=H/2, r=Math.min(W,H)/3;
+  // ドン（左）
+  taikoCtx.fillStyle='#f44'; taikoCtx.beginPath(); taikoCtx.arc(W*0.25,H/2,40,0,Math.PI*2); taikoCtx.fill();
+  taikoCtx.fillStyle='#fff'; taikoCtx.font='bold 24px TF'; taikoCtx.textAlign='center'; taikoCtx.textBaseline='middle';
+  taikoCtx.fillText('ドン',W*0.25,H/2);
   
-  for(const [key,x,y,color]of[['left',centerX-W/4,centerY,'#ff6b6b'],['right',centerX+W/4,centerY,'#4ecdc4']]){
-    const active=touchActive[key];
-    taikoCtx.fillStyle=active?color:`${color}99`;
-    taikoCtx.beginPath(); taikoCtx.arc(x,y,r,0,Math.PI*2);
-    taikoCtx.fill();
-    taikoCtx.fillStyle='#fff'; taikoCtx.font='bold 20px TF'; taikoCtx.textAlign='center';
-    taikoCtx.textBaseline='middle'; taikoCtx.fillText(key==='left'?'ドン':'カッ',x,y);
-  }
-  requestAnimationFrame(drawTaikoController);
+  // カッ（右）
+  taikoCtx.fillStyle='#44f'; taikoCtx.beginPath(); taikoCtx.arc(W*0.75,H/2,40,0,Math.PI*2); taikoCtx.fill();
+  taikoCtx.fillStyle='#fff'; taikoCtx.fillText('カッ',W*0.75,H/2);
 }
-taikoCanvas.width=window.innerWidth; taikoCanvas.height=130;
+
+let touchX={};
+taikoCanvas.addEventListener('touchstart',(e)=>{
+  for(const t of e.touches){
+    const W=taikoCanvas.width/(window.devicePixelRatio||1);
+    touchX[t.identifier]=t.clientX-taikoCanvas.getBoundingClientRect().left;
+    if(touchX[t.identifier]<W/2) judgeHit(true);
+    else judgeHit(false);
+  }
+});
+
+taikoCanvas.addEventListener('touchend',(e)=>{
+  for(const t of e.changedTouches) delete touchX[t.identifier];
+});
+
+setInterval(()=>drawTaikoController(),100);
 drawTaikoController();
 
-taikoCanvas.addEventListener('touchstart',e=>{
-  e.preventDefault();
-  const rect=taikoCanvas.getBoundingClientRect();
-  for(const touch of e.touches){
-    const x=touch.clientX-rect.left, y=touch.clientY-rect.top;
-    const centerX=taikoCanvas.width/2, centerY=taikoCanvas.height/2;
-    if(x<centerX) {touchActive.left=true; judgeHit(true);}
-    else {touchActive.right=true; judgeHit(false);}
-  }
-});
-
-taikoCanvas.addEventListener('touchend',e=>{
-  e.preventDefault();
-  touchActive={};
-});
 </script>
 </body>
 </html>
